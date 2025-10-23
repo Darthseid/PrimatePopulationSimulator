@@ -16,9 +16,9 @@
     "adult_mortality_rate": 0.015,
     "total_calories_available": 3200000000,
     "calories_needed_per_primate": 2500,
-    "coupling_rate": 0.3,
+    "coupling_rate": 0.4,
     "initial_genetic_diversity": 0.975,
-    "miscarriage_stillborn_rate": 0.113,
+    "miscarriage_stillborn_rate": 0.19,
     "fertility_rising_steepness": 1.2,
     "fertility_falling_steepness": 0.25
   },

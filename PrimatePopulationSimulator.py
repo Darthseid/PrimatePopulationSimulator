@@ -10,7 +10,7 @@ from PopulationObjects import SimulationParameters
 from PopulationObjects import double_logistic
 
 earth_year = 365.2422
-starting_population = 11100
+starting_population = 1000
 
 class PrimateSimulation:
     """
@@ -363,8 +363,8 @@ class PrimateSimulation:
         plt.show()
 
 if __name__ == "__main__":
-    sim_params = SimulationParameters.from_json("demographics.json", "modern_human")
+    sim_params = SimulationParameters.from_json("demographics.json", "elf")
     #simulation = PrimateSimulation(params=sim_params, scenario_name="bounty_mutiny")
     simulation = PrimateSimulation(params=sim_params) # For a random start
-    simulation.run_simulation(num_years=4.0)
+    simulation.run_simulation(num_years=60.0)
 
