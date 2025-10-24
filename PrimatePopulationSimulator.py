@@ -5,9 +5,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 import time  # Add this import at the top
 
-from PopulationObjects import Primate, convert_years_to_string
+from PopulationObjects import Primate, Locale, convert_years_to_string
 from PopulationObjects import SimulationParameters
-from PopulationObjects import double_logistic
+from PopulationObjects import double_logistic, calculate_carrying_capacity
 
 earth_year = 365.2422
 starting_population = 1000
@@ -16,11 +16,17 @@ class PrimateSimulation:
     """
     Manages and runs the primate population simulation.
     """
-    def __init__(self, params: SimulationParameters, scenario_name: str = None):
+    def __init__(self, params: SimulationParameters, locale: Locale, scenario_name: str = None):
         self.params = params
+        self.locale = locale
         self.population: list[Primate] = []
         self.current_day = 0
         self.history = []
+        
+        self.carrying_capacity = calculate_carrying_capacity(self.params, self.locale)
+        print(f"Locale: {self.locale.name} ({self.locale.biome_type})")  # Calculate carrying capacity based on species and locale
+        print(f"Species: {self.params.species_name} ({self.params.diet_type})")
+        print(f"Calculated Carrying Capacity: {self.carrying_capacity} individuals")
         
         self._create_initial_population(scenario_name)
 
@@ -194,10 +200,10 @@ class PrimateSimulation:
             
             self.population = survivors + newborns
             
-            if len(self.population) > self.params.carrying_capacity:
-                num_to_cull = len(self.population) - self.params.carrying_capacity
+            if len(self.population) > self.carrying_capacity:
+                num_to_cull = len(self.population) - self.carrying_capacity
                 death_counter += num_to_cull
-                self.population = random.sample(self.population, self.params.carrying_capacity)
+                self.population = random.sample(self.population, self.carrying_capacity)
 
             total_births += birth_counter
             total_deaths += death_counter
@@ -363,8 +369,9 @@ class PrimateSimulation:
         plt.show()
 
 if __name__ == "__main__":
-    sim_params = SimulationParameters.from_json("demographics.json", "elf")
-    #simulation = PrimateSimulation(params=sim_params, scenario_name="bounty_mutiny")
-    simulation = PrimateSimulation(params=sim_params) # For a random start
-    simulation.run_simulation(num_years=60.0)
+ sim_params = SimulationParameters.from_json("demographics.json", "modern_human")
+ sim_locale = Locale.from_json("locales.json", "amazonas")
+ #simulation = PrimateSimulation(params=sim_params, locale=sim_locale, scenario_name="bounty_mutiny")
+ simulation = PrimateSimulation(params=sim_params, locale=sim_locale) # For a random start
+ simulation.run_simulation(num_years=60.0)
 

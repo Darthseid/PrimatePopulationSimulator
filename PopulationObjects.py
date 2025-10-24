@@ -55,14 +55,14 @@ class Locale:
         self.area_km2: float = params.get("area_km2", 0.0)
         self.water_availability_m3: float = params.get("water_availability_m3", 0.0)
         
-        # Available calories per year (or other time unit, simulation will decide)
+        # Available calories per year
         self.carnivore_calories: int = params.get("carnivore_calories", 0)
         self.herbivore_calories: int = params.get("herbivore_calories", 0)
         self.ruminant_calories: int = params.get("ruminant_calories", 0)
 
     def __repr__(self) -> str:
         return (f"<Locale | Name: {self.name}, Biome: {self.biome_type}, "
-                f"Area: {self.area_km2:,.2f} km²>")
+                f"Area: {self.area_km2:,.2f} square kilometers")
 
 
 class SimulationParameters:
@@ -103,16 +103,14 @@ class SimulationParameters:
         self.maternal_mortality_rate = params["maternal_mortality_rate"]
         self.adult_mortality_rate = params["adult_mortality_rate"]
 
-        self.total_calories_available = params["total_calories_available"]
+        self.diet_type: str = params["diet_type"] 
         self.calories_needed_per_primate = params["calories_needed_per_primate"]
+
         self.genetic_diversity = params["initial_genetic_diversity"]
         self.fertile_days = self.menopause_age_days - self.puberty_age_days #A female primate's reproductive lifespan.
 
         self.effective_gestation_days = self.gestation_days + self.interbirth_interval_days
-        self.carrying_capacity = (
-            math.floor(self.total_calories_available / self.calories_needed_per_primate)
-            if self.calories_needed_per_primate > 0 else 0
-        )
+        
         self.cycles_per_reproductive_life = self.fertile_days / self.effective_gestation_days #How many birthing cycles a primate potentially has.
         cycle_length_in_years = self.effective_gestation_days / earth_year
         self.per_cycle_fertility_rate = self.base_fertility_rate * cycle_length_in_years
@@ -144,3 +142,33 @@ def double_logistic(t, A, k1, t1, k2, t2):
     growth_logistic = 1 / (1 + np.exp(-k1 * (t - t1)))
     decline_logistic = 1 - (1 / (1 + np.exp(-k2 * (t - t2))))
     return A * growth_logistic * decline_logistic
+
+# --- NEW FUNCTION ---
+def calculate_carrying_capacity(params: SimulationParameters, locale: Locale) -> int:
+    """
+    Calculates the carrying capacity based on the species' diet and the
+    locale's available calories.
+    """
+    
+    total_calories = 0
+    diet = params.diet_type.lower() # Make it case-insensitive
+     
+    if diet == "carnivore":
+        total_calories = locale.carnivore_calories
+    elif diet == "herbivore":
+        total_calories = locale.herbivore_calories
+    elif diet == "ruminant":
+        total_calories = locale.ruminant_calories
+    elif diet == "omnivore":
+        total_calories = int(
+            0.75 * locale.carnivore_calories + 
+            0.95 * locale.herbivore_calories 
+        )
+    else:
+        print(f"Warning: Unknown diet_type '{params.diet_type}'. Carrying capacity may be 0.")
+        
+    if params.calories_needed_per_primate <= 0:
+        return 0 # Avoid division by zero
+        
+    return math.floor(total_calories / params.calories_needed_per_primate)
+
