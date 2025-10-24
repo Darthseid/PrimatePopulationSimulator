@@ -4,80 +4,80 @@
     "biome_type": "Tropical Island",
     "area_km2": 21.0,
     "water_availability_m3": 10000000.0,
-    "carnivore_calories": 0,
-    "herbivore_calories": 100000000,
-    "ruminant_calories": 500000000
+    "carnivore_calories": 1e6,
+    "herbivore_calories": 1e8,
+    "ruminant_calories": 4.53e6
   },
-  "the_pampas": {
+  "pampas": {
     "name": "The Pampas",
     "biome_type": "Temperate Grassland",
     "area_km2": 1200000.0,
     "water_availability_m3": 500000000000.0,
-    "carnivore_calories": 500000000,
-    "herbivore_calories": 100000000000,
-    "ruminant_calories": 5000000000
+    "carnivore_calories": 5e10,
+    "herbivore_calories": 5e11,
+    "ruminant_calories": 4.53e12
   },
   "mojave_desert": {
     "name": "The Mojave Desert",
     "biome_type": "Hot Desert",
     "area_km2": 124000.0,
     "water_availability_m3": 100000000.0,
-    "carnivore_calories": 10000000,
-    "herbivore_calories": 500000000,
-    "ruminant_calories": 200000000
+    "carnivore_calories": 1e7,
+    "herbivore_calories": 1e8,
+    "ruminant_calories": 1.53e8
   },
   "greenland_coast": {
     "name": "Greenland (Coastal Tundra)",
     "biome_type": "Arctic Tundra",
     "area_km2": 410000.0,
     "water_availability_m3": 50000000000.0,
-    "carnivore_calories": 100000000,
-    "herbivore_calories": 5000000000,
-    "ruminant_calories": 100000000
+    "carnivore_calories": 2.2e7,
+    "herbivore_calories": 1.2e8,
+    "ruminant_calories": 5.1e8
   },
   "amazonas": {
     "name": "Amazonas",
     "biome_type": "Tropical Rainforest",
     "area_km2": 5500000.0,
     "water_availability_m3": 1e+15,
-    "carnivore_calories": 2000000000,
-    "herbivore_calories": 5000000000,
-    "ruminant_calories": 50000000000
+    "carnivore_calories": 4e9,
+    "herbivore_calories": 4e10,
+    "ruminant_calories": 8e10
   },
   "southern_finland": {
     "name": "Southern Finland",
     "biome_type": "Boreal Forest (Taiga)",
     "area_km2": 100000.0,
     "water_availability_m3": 70000000000.0,
-    "carnivore_calories": 1000000000,
-    "herbivore_calories": 10000000000,
-    "ruminant_calories": 10000000000
+    "carnivore_calories": 3e7,
+    "herbivore_calories": 16000000000,
+    "ruminant_calories": 16000000000
   },
   "great_dismal_swamp": {
     "name": "Great Dismal Swamp",
     "biome_type": "Temperate Wetland",
     "area_km2": 3000.0,
     "water_availability_m3": 20000000000.0,
-    "carnivore_calories": 100000000,
-    "herbivore_calories": 15000000000,
-    "ruminant_calories": 15000000000
+    "carnivore_calories": 1e7,
+    "herbivore_calories": 1e8,
+    "ruminant_calories": 3e8
   },
   "south_african_savanna": {
     "name": "South African Savanna",
     "biome_type": "Tropical Savanna",
     "area_km2": 2000000.0,
     "water_availability_m3": 2e+12,
-    "carnivore_calories": 3000000000,
-    "herbivore_calories": 200000000000,
-    "ruminant_calories": 20000000000
+    "carnivore_calories": 1.2e10,
+    "herbivore_calories": 1.2e11,
+    "ruminant_calories": 1.04e12
   },
-  "mount_everest_region": {
+  "mount_everest": {
     "name": "Mount Everest Region",
     "biome_type": "Alpine Desert / Ice",
     "area_km2": 1148.0,
     "water_availability_m3": 100000000.0,
-    "carnivore_calories": 1000,
-    "herbivore_calories": 100000,
-    "ruminant_calories": 10000
+    "carnivore_calories": 18888,
+    "herbivore_calories": 150000,
+    "ruminant_calories": 190000
   }
 }

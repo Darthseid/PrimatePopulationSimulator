@@ -26,7 +26,7 @@ class PrimateSimulation:
         self.carrying_capacity = calculate_carrying_capacity(self.params, self.locale)
         print(f"Locale: {self.locale.name} ({self.locale.biome_type})")  # Calculate carrying capacity based on species and locale
         print(f"Species: {self.params.species_name} ({self.params.diet_type})")
-        print(f"Calculated Carrying Capacity: {self.carrying_capacity} individuals")
+        print(f"Calculated Carrying Capacity: {self.carrying_capacity:,d} individuals")
         
         self._create_initial_population(scenario_name)
 
@@ -370,7 +370,7 @@ class PrimateSimulation:
 
 if __name__ == "__main__":
  sim_params = SimulationParameters.from_json("demographics.json", "modern_human")
- sim_locale = Locale.from_json("locales.json", "amazonas")
+ sim_locale = Locale.from_json("locales.json", "mount_everest")
  #simulation = PrimateSimulation(params=sim_params, locale=sim_locale, scenario_name="bounty_mutiny")
  simulation = PrimateSimulation(params=sim_params, locale=sim_locale) # For a random start
  simulation.run_simulation(num_years=60.0)
