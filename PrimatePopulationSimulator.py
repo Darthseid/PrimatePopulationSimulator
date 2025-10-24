@@ -10,7 +10,7 @@ from PopulationObjects import SimulationParameters
 from PopulationObjects import double_logistic, calculate_carrying_capacity
 
 earth_year = 365.2422
-starting_population = 1000
+starting_population = 3000
 
 class PrimateSimulation:
     """
@@ -369,8 +369,8 @@ class PrimateSimulation:
         plt.show()
 
 if __name__ == "__main__":
- sim_params = SimulationParameters.from_json("demographics.json", "modern_human")
- sim_locale = Locale.from_json("locales.json", "mount_everest")
+ sim_params = SimulationParameters.from_json("demographics.json", "giant")
+ sim_locale = Locale.from_json("locales.json", "greenland_coast")
  #simulation = PrimateSimulation(params=sim_params, locale=sim_locale, scenario_name="bounty_mutiny")
  simulation = PrimateSimulation(params=sim_params, locale=sim_locale) # For a random start
  simulation.run_simulation(num_years=60.0)
