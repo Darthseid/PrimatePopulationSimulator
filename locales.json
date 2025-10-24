@@ -1,0 +1,83 @@
+{
+  "nauru": {
+    "name": "Nauru",
+    "biome_type": "Tropical Island",
+    "area_km2": 21.0,
+    "water_availability_m3": 10000000.0,
+    "carnivore_calories": 0,
+    "herbivore_calories": 100000000,
+    "ruminant_calories": 500000000
+  },
+  "the_pampas": {
+    "name": "The Pampas",
+    "biome_type": "Temperate Grassland",
+    "area_km2": 1200000.0,
+    "water_availability_m3": 500000000000.0,
+    "carnivore_calories": 500000000,
+    "herbivore_calories": 100000000000,
+    "ruminant_calories": 5000000000
+  },
+  "mojave_desert": {
+    "name": "The Mojave Desert",
+    "biome_type": "Hot Desert",
+    "area_km2": 124000.0,
+    "water_availability_m3": 100000000.0,
+    "carnivore_calories": 10000000,
+    "herbivore_calories": 500000000,
+    "ruminant_calories": 200000000
+  },
+  "greenland_coast": {
+    "name": "Greenland (Coastal Tundra)",
+    "biome_type": "Arctic Tundra",
+    "area_km2": 410000.0,
+    "water_availability_m3": 50000000000.0,
+    "carnivore_calories": 100000000,
+    "herbivore_calories": 5000000000,
+    "ruminant_calories": 100000000
+  },
+  "amazonas": {
+    "name": "Amazonas",
+    "biome_type": "Tropical Rainforest",
+    "area_km2": 5500000.0,
+    "water_availability_m3": 1e+15,
+    "carnivore_calories": 2000000000,
+    "herbivore_calories": 5000000000,
+    "ruminant_calories": 50000000000
+  },
+  "southern_finland": {
+    "name": "Southern Finland",
+    "biome_type": "Boreal Forest (Taiga)",
+    "area_km2": 100000.0,
+    "water_availability_m3": 70000000000.0,
+    "carnivore_calories": 1000000000,
+    "herbivore_calories": 10000000000,
+    "ruminant_calories": 10000000000
+  },
+  "great_dismal_swamp": {
+    "name": "Great Dismal Swamp",
+    "biome_type": "Temperate Wetland",
+    "area_km2": 3000.0,
+    "water_availability_m3": 20000000000.0,
+    "carnivore_calories": 100000000,
+    "herbivore_calories": 15000000000,
+    "ruminant_calories": 15000000000
+  },
+  "south_african_savanna": {
+    "name": "South African Savanna",
+    "biome_type": "Tropical Savanna",
+    "area_km2": 2000000.0,
+    "water_availability_m3": 2e+12,
+    "carnivore_calories": 3000000000,
+    "herbivore_calories": 200000000000,
+    "ruminant_calories": 20000000000
+  },
+  "mount_everest_region": {
+    "name": "Mount Everest Region",
+    "biome_type": "Alpine Desert / Ice",
+    "area_km2": 1148.0,
+    "water_availability_m3": 100000000.0,
+    "carnivore_calories": 1000,
+    "herbivore_calories": 100000,
+    "ruminant_calories": 10000
+  }
+}

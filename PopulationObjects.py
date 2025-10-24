@@ -23,6 +23,48 @@ class Primate:
         return (f"<Primate | Gender: {gender}, Age: {self.age_years:.1f} yrs, "
                 f"Status: {fertility}, {coupled_status}, Children: {self.number_of_healthy_children}>") # --- UPDATED ---
 
+class Locale:
+    """
+    Represents the environment (location) where the simulation takes place.
+    It defines the available resources and area for the population.
+    """
+    
+    @classmethod
+    def from_json(cls, json_path: str, locale_name: str):
+        """
+        Loads locale parameters from a JSON file.
+        """
+        try:
+            with open(json_path, 'r') as f:
+                all_locales = json.load(f)
+            if locale_name not in all_locales:
+                raise ValueError(f"Locale '{locale_name}' not found in {json_path}")
+            params = all_locales[locale_name]
+            return cls(**params)
+        except FileNotFoundError:
+            raise FileNotFoundError(f"Locales file not found: {json_path}")
+        except json.JSONDecodeError:
+            raise ValueError(f"Invalid JSON format in file: {json_path}")
+
+    def __init__(self, **params):
+        """
+        Initializes the Locale with parameters loaded from the JSON.
+        """
+        self.name: str = params.get("name", "Unnamed Locale")
+        self.biome_type: str = params.get("biome_type", "Temperate")
+        self.area_km2: float = params.get("area_km2", 0.0)
+        self.water_availability_m3: float = params.get("water_availability_m3", 0.0)
+        
+        # Available calories per year (or other time unit, simulation will decide)
+        self.carnivore_calories: int = params.get("carnivore_calories", 0)
+        self.herbivore_calories: int = params.get("herbivore_calories", 0)
+        self.ruminant_calories: int = params.get("ruminant_calories", 0)
+
+    def __repr__(self) -> str:
+        return (f"<Locale | Name: {self.name}, Biome: {self.biome_type}, "
+                f"Area: {self.area_km2:,.2f} km²>")
+
+
 class SimulationParameters:
     @classmethod
     def from_json(cls, json_path: str, profile_name: str):

@@ -11,6 +11,8 @@
 ⦁	Add disasters like famines
 
 ⦁	Add Diet types
+⦁	Have caloric needs be determined by sex and age
+⦁	Have male fertility matter
 
 **Bugs:**
 
