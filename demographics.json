@@ -320,5 +320,28 @@
     "miscarriage_stillborn_rate": 0.11,
     "fertility_rising_steepness": 1.2,
     "fertility_falling_steepness": 0.25
+  },
+  "peak": {
+    "Species_Name": "Peakers",
+    "coupling_rate": 0.22,
+    "puberty_age_days": 3835,
+    "menopause_age_days": 99999,
+    "lifespan_days": 19620,
+    "base_fertility_rate": 0.45,
+    "gestation_days": 280,
+    "interbirth_interval_days": 730,
+    "max_kids_per_primate": 7,
+    "chance_of_multiple_birth": 0.012,
+    "sterile_chance": 0.01125,
+    "sex_ratio_at_birth": 0.495,
+    "infant_mortality_rate": 0.003,
+    "maternal_mortality_rate": 0.0006,
+    "adult_mortality_rate": 0.00276375,
+    "calories_needed_per_primate": 2730,
+    "diet_type": "omnivore",
+    "initial_genetic_diversity": 1.0,
+    "miscarriage_stillborn_rate": 0.5,
+    "fertility_rising_steepness": 0.00001,
+    "fertility_falling_steepness": 0.0001
   }
 }

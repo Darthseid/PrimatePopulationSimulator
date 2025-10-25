@@ -10,7 +10,7 @@ from PopulationObjects import SimulationParameters
 from PopulationObjects import double_logistic, calculate_carrying_capacity
 
 earth_year = 365.2422
-starting_population = 3000
+starting_population = 100
 
 class PrimateSimulation:
     """
@@ -145,14 +145,20 @@ class PrimateSimulation:
                 eligible_female_counter += 1
                 
                 contraceptive_use = False
-                mother_age_years = mother.age_years
-                fertile_years = self.params.fertile_days / earth_year
-                peak_age = self.params.puberty_age_days / earth_year + fertile_years * 0.225
+                # --- START MODIFICATION ---
+                # Check for the "Peaker" flat fertility case by checking for near-zero steepness
+                if self.params.fertility_rising_steepness < 0.01 and self.params.fertility_falling_steepness < 0.01:
+                    current_fertility_rate = self.params.effective_per_cycle_fertility_rate
+                else:
+                    # Original dynamic fertility calculation
+                    mother_age_years = mother.age_years
+                    fertile_years = self.params.fertile_days / earth_year
+                    peak_age = self.params.puberty_age_days / earth_year + fertile_years * 0.225
 
-                rising_midpoint = (self.params.puberty_age_days / earth_year + peak_age ) / 2
-                declining_midpoint = (peak_age + self.params.menopause_age_days / earth_year) / 2
-                current_fertility_rate = double_logistic(mother_age_years, self.params.effective_per_cycle_fertility_rate, self.params.fertility_rising_steepness, rising_midpoint, self.params.fertility_falling_steepness, declining_midpoint)
-
+                    rising_midpoint = (self.params.puberty_age_days / earth_year + peak_age ) / 2
+                    declining_midpoint = (peak_age + self.params.menopause_age_days / earth_year) / 2
+                    current_fertility_rate = double_logistic(mother_age_years, self.params.effective_per_cycle_fertility_rate, self.params.fertility_rising_steepness, rising_midpoint, self.params.fertility_falling_steepness, declining_midpoint)
+                # --- END MODIFICATION ---
                 if contraceptive_use:
                     current_fertility_rate *= 0.123
                 if random.random() <= max(0, current_fertility_rate):
@@ -369,9 +375,9 @@ class PrimateSimulation:
         plt.show()
 
 if __name__ == "__main__":
- sim_params = SimulationParameters.from_json("demographics.json", "giant")
- sim_locale = Locale.from_json("locales.json", "greenland_coast")
+ sim_params = SimulationParameters.from_json("demographics.json", "modern_human")
+ sim_locale = Locale.from_json("locales.json", "pampas")
  #simulation = PrimateSimulation(params=sim_params, locale=sim_locale, scenario_name="bounty_mutiny")
  simulation = PrimateSimulation(params=sim_params, locale=sim_locale) # For a random start
- simulation.run_simulation(num_years=60.0)
+ simulation.run_simulation(num_years=200.0)
 
