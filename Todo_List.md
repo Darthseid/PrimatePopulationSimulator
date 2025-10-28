@@ -14,6 +14,8 @@
 ⦁	Have caloric needs be determined by sex and age
 ⦁	Have male fertility matter
 
+⦁	Add Uneven Hybrids
+
 **Bugs:**
 
 Total Fertility Rate is often inaccurate.

@@ -1,6 +1,7 @@
 ﻿import random
 import math
 import json
+from matplotlib.pylab import f
 import numpy as np
 import matplotlib.pyplot as plt
 import time  # Add this import at the top
@@ -10,7 +11,7 @@ from PopulationObjects import SimulationParameters
 from PopulationObjects import double_logistic, calculate_carrying_capacity
 
 earth_year = 365.2422
-starting_population = 100
+starting_population = 457
 
 class PrimateSimulation:
     """
@@ -238,13 +239,25 @@ class PrimateSimulation:
         population_over_time = [h['population'] for h in self.history if h['cycle'] != 0]
         average_population = sum(population_over_time) / len(population_over_time) if population_over_time else initial_pop_size
         total_duration_years = max(1, total_duration)
+        final_population = len(self.population)
         
         calculated_birth_rate = (total_births / average_population / total_duration_years) * 1000
         calculated_death_rate = (total_deaths / average_population / total_duration_years) * 1000
+        median_age_years = 0.0
+        if final_population > 0:
+            sorted_ages_days = sorted([p.age_days for p in self.population])
+            mid_index = final_population // 2
+            if final_population % 2 == 0: # Average of two middle elements for even population             
+                median_age_days = (sorted_ages_days[mid_index - 1] + sorted_ages_days[mid_index]) / 2
+            else:         
+                median_age_days = sorted_ages_days[mid_index] # Middle element for odd population
+            median_age_years = median_age_days / earth_year
 
+        print(f"Final Population: {final_population:,d}")
         print("It has been", convert_years_to_string(total_duration))
         print(f"Total Births: {total_births}")
         print(f"Total Deaths: {total_deaths}")
+        print(f"Median Age: {median_age_years:.1f} years") # <-- NEW PRINT STATEMENT
         if total_deaths > 0:
             print(f"Percent that died of old age: {total_OldAgeDeaths / total_deaths:.2%}")
         else:
@@ -270,12 +283,12 @@ class PrimateSimulation:
         males = total_pop - females
         
         sex_ratio = males / females if females > 0 else float('inf')
-
         print(f"\n--- Cycle: {cycle} (Day: {self.current_day}) Year: {self.current_day / earth_year:.1f} ---")
         print(f"Total Population: {total_pop}")
         print(f"  - Females: {females}")
         print(f"  - Males: {males}")
         print(f"  - Sex Ratio (M/F): {sex_ratio:.2f}")
+        
         if cycle != 0 and cycle != "Final":
             print(f"Births This Cycle: {births_this_cycle}")
             print(f"Deaths This Cycle: {deaths_this_cycle}")
@@ -375,9 +388,9 @@ class PrimateSimulation:
         plt.show()
 
 if __name__ == "__main__":
- sim_params = SimulationParameters.from_json("demographics.json", "modern_human")
- sim_locale = Locale.from_json("locales.json", "pampas")
+ sim_params = SimulationParameters.from_json("demographics.json", "orc")
+ sim_locale = Locale.from_json("locales.json", "greenland_coast")
  #simulation = PrimateSimulation(params=sim_params, locale=sim_locale, scenario_name="bounty_mutiny")
  simulation = PrimateSimulation(params=sim_params, locale=sim_locale) # For a random start
- simulation.run_simulation(num_years=200.0)
+ simulation.run_simulation(num_years=90.0)
 
