@@ -107,6 +107,7 @@ class SimulationParameters:
         self.calories_needed_per_primate = params["calories_needed_per_primate"]
 
         self.genetic_diversity = params["initial_genetic_diversity"]
+        self.is_hermaphrodite = params["is_hermaphrodite"]
         self.fertile_days = self.menopause_age_days - self.puberty_age_days #A female primate's reproductive lifespan.
 
         self.effective_gestation_days = self.gestation_days + self.interbirth_interval_days
