@@ -138,12 +138,30 @@ def convert_years_to_string(years_float):
         parts.append(f"{days} day{'s' if days != 1 else ''}")
     return ", ".join(parts) if parts else "0 days"
 
-def double_logistic(t, A, k1, t1, k2, t2):
-    growth_logistic = 1 / (1 + np.exp(-k1 * (t - t1)))
-    decline_logistic = 1 - (1 / (1 + np.exp(-k2 * (t - t2))))
-    return A * growth_logistic * decline_logistic
+# --- FUNCTION RENAMED AND REFACTORED ---
+def calculate_age_based_fertility(current_age: float, 
+                                  max_fertility: float, 
+                                  rising_steepness: float, 
+                                  rising_midpoint_age: float, 
+                                  falling_steepness: float, 
+                                  falling_midpoint_age: float) -> float:
+    """
+    Calculates the fertility rate based on age using a double logistic function.
+    This creates a fertility curve that rises, peaks, and then falls.
+    
+    :param current_age: The agent's current age in years.
+    :param max_fertility: The species' theoretical maximum fertility rate (A).
+    :param rising_steepness: The steepness of the fertility growth curve (k1).
+    :param rising_midpoint_age: The age (in years) at which fertility reaches 50% of its peak (t1).
+    :param falling_steepness: The steepness of the fertility decline curve (k2).
+    :param falling_midpoint_age: The age (in years) at which fertility begins to decline from its peak (t2).
+    :return: The calculated fertility rate as a float.
+    """
+    fertility_growth = 1 / (1 + np.exp(-rising_steepness * (current_age - rising_midpoint_age)))
+    declining_exp_term = np.exp(-falling_steepness * (current_age - falling_midpoint_age))
+    fertility_decline = declining_exp_term / (1 + declining_exp_term)
+    return max_fertility * fertility_growth * fertility_decline
 
-# --- NEW FUNCTION ---
 def calculate_carrying_capacity(params: SimulationParameters, locale: Locale) -> int:
     """
     Calculates the carrying capacity based on the species' diet and the

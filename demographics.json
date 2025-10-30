@@ -20,7 +20,7 @@
     "initial_genetic_diversity": 0.975,
     "miscarriage_stillborn_rate": 0.19,
     "fertility_rising_steepness": 1.2,
-    "fertility_falling_steepness": 0.25
+    "fertility_falling_steepness": 0.5
   },
   "modern_human": {
     "Species_Name": "modern_humans",
@@ -43,7 +43,7 @@
     "initial_genetic_diversity": 1.0,
     "miscarriage_stillborn_rate": 0.1642857,
     "fertility_rising_steepness": 1.2,
-    "fertility_falling_steepness": 0.25
+    "fertility_falling_steepness": 0.5
   },
   "bounty_human": {
     "Species_Name": "bounty_humans",
@@ -66,7 +66,7 @@
     "initial_genetic_diversity": 0.9,
     "miscarriage_stillborn_rate": 0.1782857,
     "fertility_rising_steepness": 1.2,
-    "fertility_falling_steepness": 0.25
+    "fertility_falling_steepness": 0.5
   },
   "chimpanzee": {
     "Species_Name": "chimpanzees",
@@ -89,7 +89,7 @@
     "initial_genetic_diversity": 1.01,
     "miscarriage_stillborn_rate": 0.10,
     "fertility_rising_steepness": 1.2,
-    "fertility_falling_steepness": 0.25
+    "fertility_falling_steepness": 0.5
   },
   "gorilla": {
     "Species_Name": "gorillas",
@@ -112,7 +112,7 @@
     "initial_genetic_diversity": 0.99,
     "miscarriage_stillborn_rate": 0.2,
     "fertility_rising_steepness": 1.2,
-    "fertility_falling_steepness": 0.25
+    "fertility_falling_steepness": 0.5
   },
   "mandrill": {
     "Species_Name": "mandrill",
@@ -135,7 +135,7 @@
     "initial_genetic_diversity": 0.92,
     "miscarriage_stillborn_rate": 0.18,
     "fertility_rising_steepness": 1.2,
-    "fertility_falling_steepness": 0.25
+    "fertility_falling_steepness": 0.5
   },
   "ring_tailed_lemur": {
     "Species_Name": "ring_tailed_lemurs",
@@ -158,7 +158,7 @@
     "initial_genetic_diversity": 1.02,
     "miscarriage_stillborn_rate": 0.1,
     "fertility_rising_steepness": 1.2,
-    "fertility_falling_steepness": 0.25
+    "fertility_falling_steepness": 0.5
   },
   "neanderthal": {
     "Species_Name": "Neanderthals",
@@ -196,8 +196,8 @@
     "base_fertility_rate": 0.95,
     "sterile_chance": 0.001,
     "sex_ratio_at_birth": 0.4444,
-    "infant_mortality_rate": 0.333,
-    "maternal_mortality_rate": 0.035,
+    "infant_mortality_rate": 0.33,
+    "maternal_mortality_rate": 0.03,
     "adult_mortality_rate": 0.04,
     "calories_needed_per_primate": 3500,
     "diet_type": "carnivore",
@@ -211,13 +211,13 @@
     "puberty_age_days": 1000,
     "menopause_age_days": 6000,
     "lifespan_days": 6209,
-    "coupling_rate": 0.8,
+    "coupling_rate": 0.5,
     "gestation_days": 90,
     "interbirth_interval_days": 85,
     "max_kids_per_primate": 25,
     "chance_of_multiple_birth": 0.6666,
-    "base_fertility_rate": 0.95,
-    "sterile_chance": 0.001,
+    "base_fertility_rate": 0.6,
+    "sterile_chance": 0.01,
     "sex_ratio_at_birth": 0.5555,
     "infant_mortality_rate": 0.333,
     "maternal_mortality_rate": 0.035,
@@ -235,9 +235,9 @@
     "menopause_age_days": 109572,
     "lifespan_days": 273932,
     "gestation_days": 366,
-    "coupling_rate": 0.7,
-    "interbirth_interval_days": 4000,
-    "max_kids_per_primate": 2,
+    "coupling_rate": 0.11,
+    "interbirth_interval_days": 3000,
+    "max_kids_per_primate": 3,
     "chance_of_multiple_birth": 0.00001,
     "base_fertility_rate": 0.375,
     "sterile_chance": 0.0003,
@@ -273,7 +273,7 @@
     "initial_genetic_diversity": 0.9,
     "miscarriage_stillborn_rate": 0.1782857,
     "fertility_rising_steepness": 1.2,
-    "fertility_falling_steepness": 0.25
+    "fertility_falling_steepness": 0.5
   },
   "faerie": {
     "Species_Name": "faeries",
@@ -319,7 +319,7 @@
     "initial_genetic_diversity": 0.95,
     "miscarriage_stillborn_rate": 0.11,
     "fertility_rising_steepness": 1.2,
-    "fertility_falling_steepness": 0.25
+    "fertility_falling_steepness": 0.5
   },
   "peak": {
     "Species_Name": "Peakers",
@@ -365,6 +365,29 @@
     "initial_genetic_diversity": 1.0,
     "miscarriage_stillborn_rate": 0.1642857,
     "fertility_rising_steepness": 1.2,
-    "fertility_falling_steepness": 0.25
+    "fertility_falling_steepness": 0.5
+  },
+  "royal_human": {
+    "Species_Name": "nobles",
+    "coupling_rate": 0.2,
+    "puberty_age_days": 4201,
+    "menopause_age_days": 18627,
+    "lifespan_days": 28638,
+    "base_fertility_rate": 0.705,
+    "gestation_days": 280,
+    "interbirth_interval_days": 30,
+    "max_kids_per_primate": 15,
+    "chance_of_multiple_birth": 0.012,
+    "sterile_chance": 0.01125,
+    "sex_ratio_at_birth": 0.49,
+    "infant_mortality_rate": 0.03,
+    "maternal_mortality_rate": 0.006,
+    "adult_mortality_rate": 0.0114,
+    "calories_needed_per_primate": 2600,
+    "diet_type": "omnivore",
+    "initial_genetic_diversity": 0.9,
+    "miscarriage_stillborn_rate": 0.1782857,
+    "fertility_rising_steepness": 1.2,
+    "fertility_falling_steepness": 0.5
   }
 }
