@@ -29,6 +29,11 @@ class PrimateSimulation:
         print(f"Species: {self.params.species_name} ({self.params.diet_type})")
         if self.params.is_hermaphrodite:
             print("Species Type: Hermaphroditic")
+        if self.params.is_sequential_species:
+            print("Species Type: Sequential Hermaphroditic")
+        if self.params.ages_backward:
+            print("Species Type: Ages Backward (Merlin-style)")
+            
         print(f"Calculated Carrying Capacity: {self.carrying_capacity:,d} individuals")
         
         self._create_initial_population(scenario_name)
@@ -50,11 +55,14 @@ class PrimateSimulation:
                 for primate_data in scenario_data:
                     is_female = True if self.params.is_hermaphrodite else primate_data["is_female"]
                     
+                    # --- PASS PARAMS TO PRIMATE ---
                     primate = Primate(
                         is_female=is_female,
-                        age_days=primate_data["age_days"],
-                        is_initially_fertile=primate_data["is_initially_fertile"]
+                        age_days=primate_data["age_days"], # Primate __init__ will handle conversion
+                        is_initially_fertile=primate_data["is_initially_fertile"],
+                        params=self.params # Pass self.params
                     )
+                    
                     self.population.append(primate)
                 
                 population_name = self.params.species_name
@@ -77,12 +85,25 @@ class PrimateSimulation:
         max_age = self.params.lifespan_days
         population_name = self.params.species_name
         for _ in range(starting_population):
-            start_age = random.uniform(min_age, max_age)
+            start_age = random.uniform(min_age, max_age) 
             
-            is_female =  random.random() < self.params.sex_ratio_at_birth
+            is_female = True if self.params.is_hermaphrodite else (random.random() < self.params.sex_ratio_at_birth)
+            
+            if self.params.is_sequential_species:
+                if start_age < 12783:
+                    is_female = False # Start as male
+                else:
+                    is_female = True # Already transformed
             
             is_initially_fertile = random.random() > self.params.sterile_chance
-            primate = Primate(is_female=is_female, age_days=start_age, is_initially_fertile=is_initially_fertile)
+            
+            # --- PASS PARAMS TO PRIMATE ---
+            primate = Primate(
+                is_female=is_female, 
+                age_days=start_age, # Primate __init__ will handle conversion
+                is_initially_fertile=is_initially_fertile,
+                params=self.params # Pass self.params
+            )
             self.population.append(primate)
         print(f"Initial population created: {len(self.population)} {population_name}.")
 
@@ -112,6 +133,10 @@ class PrimateSimulation:
                 days_to_advance = self.params.gestation_days
             else:
                 days_to_advance = self.params.effective_gestation_days
+            
+            if days_to_advance <= 0:
+                print("Error: days_to_advance is zero or negative. Stopping simulation.")
+                break
 
             self.current_day += days_to_advance
             cycle_days_passed += days_to_advance
@@ -128,49 +153,65 @@ class PrimateSimulation:
             fertile_male_count = 0
             fertile_female_count = 0
 
-            for primate in self.population:             
-                primate.age_days += days_to_advance # 1a. Age Primate           
-                if (self.params.species_name.lower() == "sequents" and  # 1b. Sequential hermaphrodite check
-                    not primate.is_female and 
-                    primate.age_days > 12783):
+            for primate in self.population:
+                # --- 1a. Age Primate (Merlin logic) ---
+                if self.params.ages_backward:
+                    primate.age_days -= days_to_advance # Age decreases
+                else:
+                    primate.age_days += days_to_advance # Age increases
+                
+                # 1b. Sequential hermaphrodite check
+                if self.params.is_sequential_species and not primate.is_female and primate.age_years > (12783 / earth_year):
                     primate.is_female = True
                     primate.age_days = 5479
 
-                # 1c. Check Death
+                # --- 1c. Check Death (Merlin logic) ---
                 died = False
-                # Maternal mortality is checked later, as we don't know who gave birth yet
-                if primate.age_days > self.params.lifespan_days:
-                    base_mortality = 0.0005
-                    mortality_increase = 0.09
-                    lifespan_modifier = 0.93 if not primate.is_female else 1.0
-                    adjusted_age = (primate.age_days / earth_year) / lifespan_modifier * (primate.age_days / self.params.lifespan_days)
-                    factor = (base_mortality / mortality_increase) * math.exp(mortality_increase * adjusted_age) * (math.exp(mortality_increase) - 1)
-                    mortality_rate = 1 - math.exp(-factor)
-
-                    if random.random() < mortality_rate:
+                
+                if self.params.ages_backward:
+                    if primate.age_days <= 0: # Death by old age for Merlins
                         died = True
-                        total_OldAgeDeaths += 1            
+                        total_OldAgeDeaths += 1
+                else:
+                    # Standard "old age" death check
+                    if primate.age_days > self.params.lifespan_days:
+                        base_mortality = 0.0005
+                        mortality_increase = 0.09
+                        lifespan_modifier = 0.93 if not primate.is_female else 1.0
+                        
+                        age_in_years = primate.age_years 
+                        lifespan_in_years = self.params.lifespan_days / earth_year
+                        
+                        adjusted_age = (age_in_years / lifespan_modifier) * (age_in_years / lifespan_in_years)
+                        factor = (base_mortality / mortality_increase) * math.exp(mortality_increase * adjusted_age) * (math.exp(mortality_increase) - 1)
+                        mortality_rate = 1 - math.exp(-factor)
+
+                        if random.random() < mortality_rate:
+                            died = True
+                            total_OldAgeDeaths += 1
                 
                 if died:
                     death_counter += 1
                     continue  # Primate died, don't add to new population
                 
+                # 2. Primate survives, add to new population list and count stats
                 new_population.append(primate)
                 
                 if primate.is_female:
                     female_count += 1
-                    if primate.is_fertile and self.params.puberty_age_days <= primate.age_days < self.params.menopause_age_days:
+                    if primate.is_fertile and self.params.puberty_age_days <= primate.age_years * earth_year < self.params.menopause_age_days:
                         fertile_female_count += 1
                 else:
                     male_count += 1
-                    if primate.is_fertile and primate.age_days >= self.params.puberty_age_days:
+                    if primate.is_fertile and primate.age_years * earth_year >= self.params.puberty_age_days:
                         fertile_male_count += 1
             
+            # 3. Calculate this cycle's population-wide modifiers
             if self.params.is_hermaphrodite:
                 female_count = len(new_population) # Recalculate based on survivors
                 male_count = 0
                 fertile_male_count = 0
-                fertile_female_count = sum(1 for p in new_population if p.is_fertile and p.age_days >= self.params.puberty_age_days and p.age_days < self.params.menopause_age_days)
+                fertile_female_count = sum(1 for p in new_population if p.is_fertile and self.params.puberty_age_days <= p.age_years * earth_year < self.params.menopause_age_days)
                 breeding_population = fertile_female_count
                 marriage_chance = self.params.coupling_rate
             else:
@@ -184,33 +225,45 @@ class PrimateSimulation:
             adjusted_adult_mortality = self.params.per_cycle_adult_mortality_rate * (1.0 + (1.0 -  genetic_adjuster)) ** 1.59 #This caps it at a 3x multiplier when genetic adjuster is very low.
             adjusted_infant_mortality = self.params.infant_mortality_rate * (1.0 + (1.0 -  genetic_adjuster)) ** 1.59
 
+            # 4. Birth and non-age-related Death loop
             for mother in new_population:
-                if mother.age_days >= self.params.puberty_age_days and not mother.is_coupled:
+                if mother.age_years * earth_year >= self.params.puberty_age_days and not mother.is_coupled:
                     mother.is_coupled = random.random() < marriage_chance
                 
+                # We use .age_years property, which works for all species
                 is_eligible = (
                     mother.is_female and mother.is_fertile and mother.is_coupled and
-                    self.params.puberty_age_days <= mother.age_days < self.params.menopause_age_days and
+                    self.params.puberty_age_days <= mother.age_years * earth_year < self.params.menopause_age_days and
                     mother.number_of_healthy_children < self.params.max_kids_per_primate
                 )
                 if not is_eligible:
                     continue
                 eligible_female_counter += 1
                 
+                # Check for contraceptive use
                 contraceptive_use = random.random() < self.params.contraception_abortion_use_rate
+                mother_age_years = mother.age_years
+
                 if self.params.fertility_rising_steepness < 0.01 and self.params.fertility_falling_steepness < 0.01:
                     current_fertility_rate = self.params.effective_per_cycle_fertility_rate
                 else:
-                    mother_age_years = mother.age_years
-                    fertile_years = self.params.fertile_days / earth_year
-                    peak_age = self.params.puberty_age_days / earth_year + fertile_years * 0.127
-
-                    rising_midpoint = (self.params.puberty_age_days / earth_year + peak_age ) / 1.6
-                    declining_midpoint = (peak_age + self.params.menopause_age_days / earth_year) / 1.95 #These numbers aren't special. They're just there so for modern humans, the midpoint is at 16 and the decline point is at 35.
-                    current_fertility_rate = calculate_age_based_fertility(mother_age_years, self.params.effective_per_cycle_fertility_rate, self.params.fertility_rising_steepness, rising_midpoint, self.params.fertility_falling_steepness, declining_midpoint)
+                        # Original dynamic fertility calculation
+                        fertile_years = self.params.fertile_days / earth_year
+                        peak_age = self.params.puberty_age_days / earth_year + fertile_years * 0.127
+                        rising_midpoint = (self.params.puberty_age_days / earth_year + peak_age ) / 1.6
+                        declining_midpoint = (peak_age + self.params.menopause_age_days / earth_year) / 1.95
+                        current_fertility_rate = calculate_age_based_fertility(
+                        current_age=mother_age_years, 
+                        max_fertility=self.params.effective_per_cycle_fertility_rate, 
+                        rising_steepness=self.params.fertility_rising_steepness, 
+                        rising_midpoint_age=rising_midpoint, 
+                        falling_steepness=self.params.fertility_falling_steepness, 
+                        falling_midpoint_age=declining_midpoint
+                    )
                 
                 if contraceptive_use:
-                    current_fertility_rate *= 0.123 #contraception isn't perfect
+                    current_fertility_rate *= 0.123 # More accurate
+                    
                 if random.random() <= max(0, current_fertility_rate):
                     mothers_who_gave_birth.add(mother)
                     num_births = 1
@@ -219,11 +272,13 @@ class PrimateSimulation:
 
                     for _ in range(num_births):
                         if random.random() > adjusted_infant_mortality:
-                            is_female_child = True if self.params.is_hermaphrodite else (random.random() < self.params.sex_ratio_at_birth)
+                            is_female_child = True if self.params.is_hermaphrodite else (random.random() < self.params.sex_ratio_at_birth)                            
+                                
                             child = Primate(
                                 is_female=is_female_child,
-                                age_days=0,
-                                is_initially_fertile=random.random() > self.params.sterile_chance
+                                age_days=self.params.lifespan_days if self.params.ages_backward else 0,
+                                is_initially_fertile=random.random() > self.params.sterile_chance,
+                                params=self.params # Pass params
                             )
                             newborns.append(child)
                             mother.number_of_healthy_children += 1
@@ -231,12 +286,14 @@ class PrimateSimulation:
                         else:
                             death_counter += 1
             
+            # 5. Final death check (maternal and adult mortality)
             final_survivors = []
             for primate in new_population:
                 died = False
                 if primate in mothers_who_gave_birth and random.random() <= self.params.maternal_mortality_rate:
                     died = True
-                elif primate.age_days > 1 and random.random() < adjusted_adult_mortality:
+                # Use age_years > 0.5 to avoid killing newborns with adult mortality
+                elif primate.age_years > 0.5 and random.random() < adjusted_adult_mortality:
                     died = True
                 
                 if died:
@@ -244,8 +301,10 @@ class PrimateSimulation:
                 else:
                     final_survivors.append(primate)
             
+            # 6. Combine survivors and newborns
             self.population = final_survivors + newborns
             
+            # 7. Apply Carrying Capacity Culling
             if len(self.population) > self.carrying_capacity:
                 num_to_cull = len(self.population) - self.carrying_capacity
                 death_counter += num_to_cull
@@ -254,6 +313,7 @@ class PrimateSimulation:
             total_births += birth_counter
             total_deaths += death_counter
 
+            # 8. Log stats
             log_check = False
             if cycle_interval > 0:
                 if cycle_days_passed >= self.params.effective_gestation_days * cycle_interval:
@@ -261,15 +321,21 @@ class PrimateSimulation:
             elif cycle % 10 == 0: # Fallback log for very short cycles
                  log_check = True
 
-            if log_check:
+            if log_check or (self.current_day >= total_days): # Always log last cycle
                 self._log_population_stats(cycle, birth_counter, death_counter, eligible_female_counter)
                 cycle_days_passed = 0
             
+            # 9. Check for extinction
             if not self.params.is_hermaphrodite and not self.params.is_sequential_species:
                 if not any(p.is_female for p in self.population) or not any(not p.is_female for p in self.population):
                     print(f"\n--- Simulation Terminated Early on cycle {cycle} ---")
                     print("Reason: One gender has gone extinct.")
                     break
+            
+            if not self.population:
+                print(f"\n--- Simulation Terminated Early on cycle {cycle} ---")
+                print("Reason: Population is extinct.")
+                break
                 
             cycle += 1
 
@@ -278,11 +344,11 @@ class PrimateSimulation:
         
         initial_pop_size = self.history[0]['population'] if self.history else 1
 
-        agents_past_menopause = [p for p in self.population if p.age_days >= self.params.menopause_age_days]
-
+        # Use age_years for TFR calculation
+        agents_past_menopause = [p for p in self.population if p.age_years * earth_year >= self.params.menopause_age_days]
         agents_at_lifespan = [
             p for p in self.population 
-            if p.age_days >= (self.params.lifespan_days * 0.98)
+            if p.age_years * earth_year >= (self.params.lifespan_days * 0.98)
         ]
         
         total_fertility_rate = 0.0
@@ -306,13 +372,12 @@ class PrimateSimulation:
         
         median_age_years = 0.0
         if final_population > 0:
-            sorted_ages_days = sorted([p.age_days for p in self.population])
+            sorted_ages_years = sorted([p.age_years for p in self.population])
             mid_index = final_population // 2
             if final_population % 2 == 0: # Average of two middle elements for even population
-                median_age_days = (sorted_ages_days[mid_index - 1] + sorted_ages_days[mid_index]) / 2
+                median_age_years = (sorted_ages_years[mid_index - 1] + sorted_ages_years[mid_index]) / 2
             else:
-                median_age_days = sorted_ages_days[mid_index] # Middle element for odd population
-            median_age_years = median_age_days / earth_year
+                median_age_years = sorted_ages_years[mid_index] # Middle element for odd population
 
         print(f"Final Population: {final_population:,d}")
         print("It has been", convert_years_to_string(total_duration))
@@ -342,14 +407,14 @@ class PrimateSimulation:
         
         median_age_years = 0.0
         if total_pop > 0:
+            # Use .age_years property
             if total_pop > 5000:
                 sample_population = random.sample(self.population, 1000)
-                sample_ages_days = np.array([p.age_days for p in sample_population])
-                median_age_days = np.median(sample_ages_days)
+                sample_ages_years = np.array([p.age_years for p in sample_population])
+                median_age_years = np.median(sample_ages_years)
             else:    # Original, exact calculation for smaller pops
-                ages_in_days = np.array([p.age_days for p in self.population])
-                median_age_days = np.median(ages_in_days)
-            median_age_years = median_age_days / earth_year
+                ages_in_years = np.array([p.age_years for p in self.population])
+                median_age_years = np.median(ages_in_years)
 
         print(f"\n--- Cycle: {cycle} (Day: {self.current_day}) Year: {self.current_day / earth_year:.1f} ---")
         print(f"Total Population: {total_pop:,d}")
@@ -378,6 +443,7 @@ class PrimateSimulation:
 
         print("\n--- Population Pyramid ---")
         
+        # Use .age_years property
         max_age_obj = max(self.population, key=lambda p: p.age_years, default=None)
         if not max_age_obj:
             print("Population is extinct.")
@@ -400,7 +466,7 @@ class PrimateSimulation:
         age_distribution = {f"{i}-{i+bracket_size-1}": {"male": 0, "female": 0} for i in brackets}
         
         for p in self.population:
-            age_in_years = int(p.age_years)
+            age_in_years = int(p.age_years) # Use .age_years property
             bracket_start = (age_in_years // bracket_size) * bracket_size
             bracket_key = f"{bracket_start}-{bracket_start+bracket_size-1}"
             if bracket_key in age_distribution:
@@ -408,7 +474,7 @@ class PrimateSimulation:
                     age_distribution[bracket_key]["female"] += 1
                 else:
                     age_distribution[bracket_key]["male"] += 1
-        
+       
         max_count_in_bracket = 1
         for data in age_distribution.values():
             max_count_in_bracket = max(max_count_in_bracket, data['male'], data['female'])
@@ -504,7 +570,7 @@ class PrimateSimulation:
         plt.show()
 
 if __name__ == "__main__":
-    sim_params = SimulationParameters.from_json("demographics.json", "medieval_human")
+    sim_params = SimulationParameters.from_json("demographics.json", "modern_human")
     sim_locale = Locale.from_json("locales.json", "pampas")
     #simulation = PrimateSimulation(params=sim_params, locale=sim_locale, scenario_name="bounty_mutiny")
     simulation = PrimateSimulation(params=sim_params, locale=sim_locale) # For a random start
