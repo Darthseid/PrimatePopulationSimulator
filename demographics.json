@@ -21,7 +21,8 @@
     "miscarriage_stillborn_rate": 0.19,
     "fertility_rising_steepness": 1.2,
     "fertility_falling_steepness": 0.5,
-    "is_hermaphrodite": false
+    "is_hermaphrodite": false,
+    "contraception_abortion_use_rate": 0.01
   },
   "modern_human": {
     "Species_Name": "modern_humans",
@@ -32,7 +33,7 @@
     "base_fertility_rate": 0.705,
     "gestation_days": 280,
     "interbirth_interval_days": 730,
-    "max_kids_per_primate": 5,
+    "max_kids_per_primate": 6,
     "chance_of_multiple_birth": 0.012,
     "sterile_chance": 0.01125,
     "sex_ratio_at_birth": 0.495,
@@ -45,7 +46,8 @@
     "miscarriage_stillborn_rate": 0.1642857,
     "fertility_rising_steepness": 1.2,
     "fertility_falling_steepness": 0.5,
-    "is_hermaphrodite": false
+    "is_hermaphrodite": false,
+    "contraception_abortion_use_rate": 0.55
   },
   "bounty_human": {
     "Species_Name": "bounty_humans",
@@ -69,7 +71,8 @@
     "miscarriage_stillborn_rate": 0.1782857,
     "fertility_rising_steepness": 1.2,
     "fertility_falling_steepness": 0.5,
-    "is_hermaphrodite": false
+    "is_hermaphrodite": false,
+    "contraception_abortion_use_rate": 0.01
   },
   "chimpanzee": {
     "Species_Name": "chimpanzees",
@@ -93,7 +96,8 @@
     "miscarriage_stillborn_rate": 0.10,
     "fertility_rising_steepness": 1.2,
     "fertility_falling_steepness": 0.5,
-    "is_hermaphrodite": false
+    "is_hermaphrodite": false,
+    "contraception_abortion_use_rate": 0.0
   },
   "gorilla": {
     "Species_Name": "gorillas",
@@ -117,7 +121,8 @@
     "miscarriage_stillborn_rate": 0.2,
     "fertility_rising_steepness": 1.2,
     "fertility_falling_steepness": 0.5,
-    "is_hermaphrodite": false
+    "is_hermaphrodite": false,
+    "contraception_abortion_use_rate": 0.0
   },
   "mandrill": {
     "Species_Name": "mandrill",
@@ -141,7 +146,8 @@
     "miscarriage_stillborn_rate": 0.18,
     "fertility_rising_steepness": 1.2,
     "fertility_falling_steepness": 0.5,
-    "is_hermaphrodite": false
+    "is_hermaphrodite": false,
+    "contraception_abortion_use_rate": 0.0
   },
   "ring_tailed_lemur": {
     "Species_Name": "ring_tailed_lemurs",
@@ -165,7 +171,8 @@
     "miscarriage_stillborn_rate": 0.1,
     "fertility_rising_steepness": 1.2,
     "fertility_falling_steepness": 0.5,
-    "is_hermaphrodite": false
+    "is_hermaphrodite": false,
+    "contraception_abortion_use_rate": 0.0
   },
   "neanderthal": {
     "Species_Name": "Neanderthals",
@@ -189,7 +196,8 @@
     "miscarriage_stillborn_rate": 0.09,
     "fertility_rising_steepness": 2.4,
     "fertility_falling_steepness": 0.15,
-    "is_hermaphrodite": false
+    "is_hermaphrodite": false,
+    "contraception_abortion_use_rate": 0.0
   },
   "orc": {
     "Species_Name": "Orcs",
@@ -213,7 +221,8 @@
     "miscarriage_stillborn_rate": 0.0001,
     "fertility_rising_steepness": 1.5,
     "fertility_falling_steepness": 0.1,
-    "is_hermaphrodite": false
+    "is_hermaphrodite": false,
+    "contraception_abortion_use_rate": 0.0
   },
   "goblin": {
     "Species_Name": "Goblins",
@@ -237,7 +246,8 @@
     "miscarriage_stillborn_rate": 0.0001,
     "fertility_rising_steepness": 1.5,
     "fertility_falling_steepness": 0.1,
-    "is_hermaphrodite": false
+    "is_hermaphrodite": false,
+    "contraception_abortion_use_rate": 0.0
   },
   "elf": {
     "Species_Name": "Elves",
@@ -245,7 +255,7 @@
     "menopause_age_days": 109572,
     "lifespan_days": 273932,
     "gestation_days": 366,
-    "coupling_rate": 0.11,
+    "coupling_rate": 0.2,
     "interbirth_interval_days": 3000,
     "max_kids_per_primate": 3,
     "chance_of_multiple_birth": 0.00001,
@@ -261,7 +271,8 @@
     "miscarriage_stillborn_rate": 0.00002,
     "fertility_rising_steepness": 0.6,
     "fertility_falling_steepness": 0.7,
-    "is_hermaphrodite": false
+    "is_hermaphrodite": false,
+    "contraception_abortion_use_rate": 0.5
   },
   "hobbit": {
     "Species_Name": "Hobbits",
@@ -285,7 +296,8 @@
     "miscarriage_stillborn_rate": 0.1782857,
     "fertility_rising_steepness": 1.2,
     "fertility_falling_steepness": 0.5,
-    "is_hermaphrodite": false
+    "is_hermaphrodite": false,
+    "contraception_abortion_use_rate": 0.01
   },
   "faerie": {
     "Species_Name": "faeries",
@@ -309,7 +321,8 @@
     "miscarriage_stillborn_rate": 0.3,
     "fertility_rising_steepness": 2.0,
     "fertility_falling_steepness": 1.0,
-    "is_hermaphrodite": false
+    "is_hermaphrodite": false,
+    "contraception_abortion_use_rate": 0.0
   },
   "giant": {
     "Species_Name": "giant",
@@ -333,7 +346,8 @@
     "miscarriage_stillborn_rate": 0.11,
     "fertility_rising_steepness": 1.2,
     "fertility_falling_steepness": 0.5,
-    "is_hermaphrodite": false
+    "is_hermaphrodite": false,
+    "contraception_abortion_use_rate": 0.01
   },
   "peak": {
     "Species_Name": "Peakers",
@@ -344,7 +358,7 @@
     "base_fertility_rate": 0.45,
     "gestation_days": 280,
     "interbirth_interval_days": 730,
-    "max_kids_per_primate": 7,
+    "max_kids_per_primate": 6,
     "chance_of_multiple_birth": 0.012,
     "sterile_chance": 0.01125,
     "sex_ratio_at_birth": 0.495,
@@ -357,7 +371,8 @@
     "miscarriage_stillborn_rate": 0.5,
     "fertility_rising_steepness": 0.00001,
     "fertility_falling_steepness": 0.0001,
-    "is_hermaphrodite": false
+    "is_hermaphrodite": false,
+    "contraception_abortion_use_rate": 0.55
   },
   "frontloader": {
     "Species_Name": "frontloaders",
@@ -381,7 +396,8 @@
     "miscarriage_stillborn_rate": 0.1642857,
     "fertility_rising_steepness": 1.2,
     "fertility_falling_steepness": 0.5,
-    "is_hermaphrodite": false
+    "is_hermaphrodite": false,
+    "contraception_abortion_use_rate": 0.55
   },
   "royal_human": {
     "Species_Name": "nobles",
@@ -405,7 +421,8 @@
     "miscarriage_stillborn_rate": 0.1782857,
     "fertility_rising_steepness": 1.2,
     "fertility_falling_steepness": 0.5,
-    "is_hermaphrodite": false
+    "is_hermaphrodite": false,
+    "contraception_abortion_use_rate": 0.1
   },
   "hiver": {
     "Species_Name": "Hivers",
@@ -429,7 +446,8 @@
     "miscarriage_stillborn_rate": 0.09,
     "fertility_rising_steepness": 1.2,
     "fertility_falling_steepness": 0.5,
-    "is_hermaphrodite": true
+    "is_hermaphrodite": true,
+    "contraception_abortion_use_rate": 0.0
   },
   "simult": {
     "Species_Name": "Simults",
@@ -440,7 +458,7 @@
     "base_fertility_rate": 0.705,
     "gestation_days": 280,
     "interbirth_interval_days": 730,
-    "max_kids_per_primate": 7,
+    "max_kids_per_primate": 6,
     "chance_of_multiple_birth": 0.012,
     "sterile_chance": 0.01125,
     "sex_ratio_at_birth": 1.0,
@@ -453,21 +471,22 @@
     "miscarriage_stillborn_rate": 0.1642857,
     "fertility_rising_steepness": 1.2,
     "fertility_falling_steepness": 0.5,
-    "is_hermaphrodite": true
+    "is_hermaphrodite": true,
+    "contraception_abortion_use_rate": 0.7
   },
-  "sequents": {
+  "sequent": {
     "Species_Name": "Sequents",
-    "coupling_rate": 0.22,
+    "coupling_rate": 0.11,
     "puberty_age_days": 3835,
     "menopause_age_days": 19627,
     "lifespan_days": 31776,
     "base_fertility_rate": 0.705,
     "gestation_days": 280,
     "interbirth_interval_days": 730,
-    "max_kids_per_primate": 5,
+    "max_kids_per_primate": 6,
     "chance_of_multiple_birth": 0.012,
     "sterile_chance": 0.01125,
-    "sex_ratio_at_birth": 1.0,
+    "sex_ratio_at_birth": 0.0,
     "infant_mortality_rate": 0.003,
     "maternal_mortality_rate": 0.0006,
     "adult_mortality_rate": 0.00276375,
@@ -478,6 +497,7 @@
     "fertility_rising_steepness": 1.2,
     "fertility_falling_steepness": 0.5,
     "is_hermaphrodite": false,
-    "is_sequential_species": true
+    "is_sequential_species": true,
+    "contraception_abortion_use_rate": 0.65
   }
 }

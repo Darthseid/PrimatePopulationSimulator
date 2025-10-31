@@ -11,7 +11,7 @@ from PopulationObjects import SimulationParameters
 from PopulationObjects import calculate_age_based_fertility, calculate_carrying_capacity
 
 earth_year = 365.2422
-starting_population = 50
+starting_population = 1000
 
 class PrimateSimulation:
     """
@@ -79,7 +79,7 @@ class PrimateSimulation:
         for _ in range(starting_population):
             start_age = random.uniform(min_age, max_age)
             
-            is_female =  (random.random() < self.params.sex_ratio_at_birth)
+            is_female =  random.random() < self.params.sex_ratio_at_birth
             
             is_initially_fertile = random.random() > self.params.sterile_chance
             primate = Primate(is_female=is_female, age_days=start_age, is_initially_fertile=is_initially_fertile)
@@ -128,11 +128,15 @@ class PrimateSimulation:
             fertile_male_count = 0
             fertile_female_count = 0
 
-            for primate in self.population:
-                # 1a. Age Primate
-                primate.age_days += days_to_advance
+            for primate in self.population:             
+                primate.age_days += days_to_advance # 1a. Age Primate           
+                if (self.params.species_name.lower() == "sequents" and  # 1b. Sequential hermaphrodite check
+                    not primate.is_female and 
+                    primate.age_days > 12783):
+                    primate.is_female = True
+                    primate.age_days = 5479
 
-                # 1b. Check Death
+                # 1c. Check Death
                 died = False
                 # Maternal mortality is checked later, as we don't know who gave birth yet
                 if primate.age_days > self.params.lifespan_days:
@@ -193,7 +197,7 @@ class PrimateSimulation:
                     continue
                 eligible_female_counter += 1
                 
-                contraceptive_use = False
+                contraceptive_use = random.random() < self.params.contraception_abortion_use_rate
                 if self.params.fertility_rising_steepness < 0.01 and self.params.fertility_falling_steepness < 0.01:
                     current_fertility_rate = self.params.effective_per_cycle_fertility_rate
                 else:
@@ -206,7 +210,7 @@ class PrimateSimulation:
                     current_fertility_rate = calculate_age_based_fertility(mother_age_years, self.params.effective_per_cycle_fertility_rate, self.params.fertility_rising_steepness, rising_midpoint, self.params.fertility_falling_steepness, declining_midpoint)
                 
                 if contraceptive_use:
-                    current_fertility_rate *= 0.123
+                    current_fertility_rate *= 0.123 #contraception isn't perfect
                 if random.random() <= max(0, current_fertility_rate):
                     mothers_who_gave_birth.add(mother)
                     num_births = 1
@@ -261,7 +265,7 @@ class PrimateSimulation:
                 self._log_population_stats(cycle, birth_counter, death_counter, eligible_female_counter)
                 cycle_days_passed = 0
             
-            if not self.params.is_hermaphrodite:
+            if not self.params.is_hermaphrodite and not self.params.is_sequential_species:
                 if not any(p.is_female for p in self.population) or not any(not p.is_female for p in self.population):
                     print(f"\n--- Simulation Terminated Early on cycle {cycle} ---")
                     print("Reason: One gender has gone extinct.")
@@ -314,7 +318,6 @@ class PrimateSimulation:
         print("It has been", convert_years_to_string(total_duration))
         print(f"Total Births: {total_births:,d}")
         print(f"Total Deaths: {total_deaths:,d}")
-        print(f"Median Age: {median_age_years:.1f} years") # <-- NEW PRINT STATEMENT
         if total_deaths > 0:
             print(f"Percent that died of old age: {total_OldAgeDeaths / total_deaths:.2%}")
         else:
@@ -501,9 +504,9 @@ class PrimateSimulation:
         plt.show()
 
 if __name__ == "__main__":
-    sim_params = SimulationParameters.from_json("demographics.json", "modern_human")
+    sim_params = SimulationParameters.from_json("demographics.json", "medieval_human")
     sim_locale = Locale.from_json("locales.json", "pampas")
     #simulation = PrimateSimulation(params=sim_params, locale=sim_locale, scenario_name="bounty_mutiny")
     simulation = PrimateSimulation(params=sim_params, locale=sim_locale) # For a random start
-    simulation.run_simulation(num_years=300.0)
+    simulation.run_simulation(num_years=200.0)
 
