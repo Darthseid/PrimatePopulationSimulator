@@ -175,9 +175,10 @@ class PrimateSimulation:
                 marriage_chance = self.params.coupling_rate * sex_ratio
 
             genetic_adjuster = min(1.0, breeding_population / 50.0)
+            genetic_adjuster *= self.genetic_diversity
 
-            adjusted_adult_mortality = self.params.per_cycle_adult_mortality_rate * (1.0 + (1.0 -  genetic_adjuster)) ** 1.1
-            adjusted_infant_mortality = self.params.infant_mortality_rate * (1.0 + (1.0 -  genetic_adjuster)) ** 1.1
+            adjusted_adult_mortality = self.params.per_cycle_adult_mortality_rate * (1.0 + (1.0 -  genetic_adjuster)) ** 1.59 #This caps it at a 3x multiplier when genetic adjuster is very low.
+            adjusted_infant_mortality = self.params.infant_mortality_rate * (1.0 + (1.0 -  genetic_adjuster)) ** 1.59
 
             for mother in new_population:
                 if mother.age_days >= self.params.puberty_age_days and not mother.is_coupled:
