@@ -11,7 +11,7 @@ from PopulationObjects import SimulationParameters
 from PopulationObjects import calculate_age_based_fertility, calculate_carrying_capacity
 
 earth_year = 365.2422
-starting_population = 100
+starting_population = 1000
 
 class PrimateSimulation:
     """
@@ -88,8 +88,7 @@ class PrimateSimulation:
             start_age = random.uniform(min_age, max_age) 
             
             is_female = True if self.params.is_hermaphrodite else (random.random() < self.params.sex_ratio_at_birth)
-            
-            if self.params.is_sequential_species:
+            if self.params.species_name == "sequents":
                 if start_age < 12783:
                     is_female = False # Start as male
                 else:
@@ -161,7 +160,7 @@ class PrimateSimulation:
                     primate.age_days += days_to_advance # Age increases
                 
                 # 1b. Sequential hermaphrodite check
-                if self.params.is_sequential_species and not primate.is_female and primate.age_years > (12783 / earth_year):
+                if self.params.species_name == "sequents" and not primate.is_female and primate.age_years > (12783 / earth_year):
                     primate.is_female = True
                     primate.age_days = 5479
 
@@ -192,6 +191,15 @@ class PrimateSimulation:
                 
                 if died:
                     death_counter += 1
+                     # --- NEW RESPAWN LOGIC (DOUBLES) ---
+                    if self.params.species_name == "Doubles" and primate.is_female:
+                        respawned_male = Primate(
+                            params=self.params,
+                            is_female=False,
+                            age_days=4748, #Age 13 years
+                            is_initially_fertile=random.random() > self.params.sterile_chance 
+                        )
+                        newborns.append(respawned_male) # Add to newborns list
                     continue  # Primate died, don't add to new population
                 
                 # 2. Primate survives, add to new population list and count stats
@@ -217,7 +225,7 @@ class PrimateSimulation:
             else:
                 breeding_population = (4 * fertile_male_count * fertile_female_count) / max(1, fertile_male_count + fertile_female_count)
                 sex_ratio = male_count / max(1, female_count)
-                marriage_chance = self.params.coupling_rate * sex_ratio
+                marriage_chance = self.params.coupling_rate * np.sqrt(sex_ratio)
 
             genetic_adjuster = min(1.0, breeding_population / 50.0)
             genetic_adjuster *= self.genetic_diversity
@@ -285,6 +293,12 @@ class PrimateSimulation:
                             birth_counter += 1
                         else:
                             death_counter += 1
+                            if self.params.species_name == "Doubles" and primate.is_female:
+                                respawned_male = Primate(
+                                params=self.params,
+                                is_female=False,
+                                age_days=4748, #Age 13 years
+                                is_initially_fertile=random.random() > self.params.sterile_chance                                                        )
             
             # 5. Final death check (maternal and adult mortality)
             final_survivors = []
@@ -298,6 +312,13 @@ class PrimateSimulation:
                 
                 if died:
                     death_counter += 1
+                    if self.params.species_name == "Doubles" and primate.is_female:
+                        respawned_male = Primate(
+                            params=self.params,
+                            is_female=False,
+                            age_days=4748, #Age 13 years
+                            is_initially_fertile=random.random() > self.params.sterile_chance 
+                        )
                 else:
                     final_survivors.append(primate)
             
@@ -570,9 +591,9 @@ class PrimateSimulation:
         plt.show()
 
 if __name__ == "__main__":
-    sim_params = SimulationParameters.from_json("demographics.json", "coonfolk")
+    sim_params = SimulationParameters.from_json("demographics.json", "double")
     sim_locale = Locale.from_json("locales.json", "pampas")
     #simulation = PrimateSimulation(params=sim_params, locale=sim_locale, scenario_name="bounty_mutiny")
     simulation = PrimateSimulation(params=sim_params, locale=sim_locale) # For a random start
-    simulation.run_simulation(num_years=120.0)
+    simulation.run_simulation(num_years=300.0)
 
