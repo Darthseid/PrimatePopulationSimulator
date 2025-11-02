@@ -570,8 +570,8 @@ class PrimateSimulation:
         plt.show()
 
 if __name__ == "__main__":
-    sim_params = SimulationParameters.from_json("demographics.json", "satyr")
-    sim_locale = Locale.from_json("locales.json", "south_african_savanna")
+    sim_params = SimulationParameters.from_json("demographics.json", "coonfolk")
+    sim_locale = Locale.from_json("locales.json", "pampas")
     #simulation = PrimateSimulation(params=sim_params, locale=sim_locale, scenario_name="bounty_mutiny")
     simulation = PrimateSimulation(params=sim_params, locale=sim_locale) # For a random start
     simulation.run_simulation(num_years=120.0)
