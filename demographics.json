@@ -651,5 +651,30 @@
     "is_hermaphrodite": false,
     "contraception_abortion_use_rate": 0.0,
     "is_sequential_species": true
+  },
+  "treant": {
+    "Species_Name": "Treants",
+    "puberty_age_days": 7305,
+    "menopause_age_days": 109572,
+    "lifespan_days": 109572,
+    "gestation_days": 365,
+    "interbirth_interval_days": 1096,
+    "max_kids_per_primate": 500,
+    "chance_of_multiple_birth": 0.99,
+    "base_fertility_rate": 0.9,
+    "sterile_chance": 0.05,
+    "sex_ratio_at_birth": 1.0,
+    "infant_mortality_rate": 0.99,
+    "maternal_mortality_rate": 0.0,
+    "adult_mortality_rate": 0.005,
+    "calories_needed_per_primate": 151,
+    "diet_type": "autotroph",
+    "coupling_rate": 1.0,
+    "initial_genetic_diversity": 1.0,
+    "miscarriage_stillborn_rate": 0.8,
+    "fertility_rising_steepness": 0.2,
+    "fertility_falling_steepness": 0.01,
+    "is_hermaphrodite": true,
+    "contraception_abortion_use_rate": 0.0
   }
 }

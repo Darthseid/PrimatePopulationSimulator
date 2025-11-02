@@ -11,7 +11,7 @@ from PopulationObjects import SimulationParameters
 from PopulationObjects import calculate_age_based_fertility, calculate_carrying_capacity
 
 earth_year = 365.2422
-starting_population = 1000
+starting_population = 100
 
 class PrimateSimulation:
     """
@@ -324,7 +324,7 @@ class PrimateSimulation:
             
             # 6. Combine survivors and newborns
             self.population = final_survivors + newborns
-            
+           # self.carrying_capacity += death_counter // 10
             # 7. Apply Carrying Capacity Culling
             if len(self.population) > self.carrying_capacity:
                 num_to_cull = len(self.population) - self.carrying_capacity
@@ -591,9 +591,9 @@ class PrimateSimulation:
         plt.show()
 
 if __name__ == "__main__":
-    sim_params = SimulationParameters.from_json("demographics.json", "double")
-    sim_locale = Locale.from_json("locales.json", "pampas")
+    sim_params = SimulationParameters.from_json("demographics.json", "treant")
+    sim_locale = Locale.from_json("locales.json", "greenland_coast")
     #simulation = PrimateSimulation(params=sim_params, locale=sim_locale, scenario_name="bounty_mutiny")
     simulation = PrimateSimulation(params=sim_params, locale=sim_locale) # For a random start
-    simulation.run_simulation(num_years=300.0)
+    simulation.run_simulation(num_years=400.0)
 

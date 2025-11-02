@@ -158,14 +158,16 @@ def calculate_carrying_capacity(params: SimulationParameters, locale: Locale) ->
         total_available_calories = locale.carnivore_calories + locale.herbivore_calories
     elif diet == "herbivore":
         total_available_calories = locale.herbivore_calories + locale.ruminant_calories
-    elif diet == "ruminant" or diet == "gatherer": # Alias for ruminant
+    elif diet == "ruminant":
         total_available_calories = locale.ruminant_calories
+    elif diet == "autotroph":
+        total_available_calories = locale.water_availability_m3
     else:
         print(f"Warning: Unknown diet_type '{params.diet_type}'. Defaulting to omnivore.")
         total_available_calories = locale.carnivore_calories + locale.herbivore_calories + locale.ruminant_calories
 
     if params.calories_needed_per_primate <= 0:
-        return 9999999  # Effectively infinite carrying capacity if primates need 0 calories
+        return math.factorial(19)  # Effectively infinite carrying capacity if primates need 0 calories
         
     return math.floor(total_available_calories / params.calories_needed_per_primate)
 
