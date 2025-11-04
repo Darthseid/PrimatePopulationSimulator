@@ -548,6 +548,7 @@ class PrimateSimulation:
         print(f"Crude Death Rate (per 1,000/year, based on avg pop): {calculated_death_rate:.2f}")
         print(f"Rate of Natural Increase: {calculated_birth_rate - calculated_death_rate:.2f} per 1,000/year")
         print(f"Population Change: {(len(self.population) / initial_pop_size * 100):.2f}%" if initial_pop_size > 0 else "N/A")
+        print(self.unions)
         
         self.display_population_pyramid()
 

@@ -204,6 +204,14 @@ class Union:
             all_females = any(p.is_female for p in self.members)
             return not all_males or not all_females
 
+    def __repr__(self) -> str:
+        """Provides a human-readable string representation for printing."""
+        member_list = []
+        for p in self.members:
+            gender = "H" if p.params.is_hermaphrodite else ("F" if p.is_female else "M")
+            member_list.append(f"{gender}({p.age_years:.1f}y)({p.number_of_healthy_children:.1f}y) ")
+            
+        return f"<Union ({self.marriage_type} {len(self.members)}/{self.max_size}) | Members: [{', '.join(member_list)}]>"
 
 def calculate_carrying_capacity(params: SimulationParameters, locale: Locale) -> int:
     """
