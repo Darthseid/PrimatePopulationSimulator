@@ -1,18 +1,15 @@
 import math
 import numpy as np
 import json
+from typing import Optional, Set
 
 earth_year = 365.2422  # Constants
 
 class Primate:
     def __init__(self, is_female: bool, age_days: int, is_initially_fertile: bool, params: 'SimulationParameters'):
         self.is_female: bool = is_female
-        
-        # Store params to know species rules (e.g., lifespan, ageing direction)
-        self.params = params 
-
-        self.age_days: int = age_days
-            
+        self.params = params   # Store params to know species rules (e.g., lifespan, ageing direction)
+        self.age_days: int = age_days          
         self.is_fertile: bool = is_initially_fertile
         self.is_coupled: bool = False
         self.number_of_healthy_children: int = 0
@@ -21,11 +18,17 @@ class Primate:
     def age_years(self) -> float:
             return self.age_days / earth_year
 
+    @property
+    def is_coupled(self) -> bool:
+        """
+        Property to check if the primate is in a union.
+        """
+        return self.union is not None
+
     def __repr__(self) -> str:
         gender = "Female" if self.is_female else "Male"
         fertility = "Fertile" if self.is_fertile else "Sterile"
         coupled_status = "Coupled" if self.is_coupled else "Uncoupled"
-        # Use the age_years property to always show the correct "age since birth"
         return (f"<Primate | Gender: {gender}, Age: {self.age_years:.1f} yrs, "
                 f"Status: {fertility}, {coupled_status}, Children: {self.number_of_healthy_children}>")
 
@@ -53,11 +56,10 @@ class Locale:
         self.biome_type: str = params.get("biome_type", "Temperate")
         self.area_sq_km: float = params.get("area_sq_km", 0)
         self.water_availability_m3: float = params.get("water_availability_m3", 0)
-        # Calories available *per day* from the environment
+
         self.carnivore_calories: int = params.get("carnivore_calories", 0)
         self.herbivore_calories: int = params.get("herbivore_calories", 0)
         self.ruminant_calories: int = params.get("ruminant_calories", 0) # Interpreted as gathered food (plants, fruit, nuts)
-
 
 class SimulationParameters:
     """
@@ -144,6 +146,64 @@ class SimulationParameters:
         else:
             self.per_cycle_adult_mortality_rate = 0
 
+class Union:
+    """
+    Represents a relationship (couple, harem, etc.) for breeding.
+    """
+    def __init__(self, marriage_type: str, max_size: int):
+        self.members: Set[Primate] = set()
+        self.marriage_type: str = marriage_type
+        self.max_size: int = max_size
+
+    def add_member(self, primate: Primate):
+        """Adds a primate to the union and updates the primate's state."""
+        if len(self.members) < self.max_size:
+            self.members.add(primate)
+            primate.union = self
+        else:
+            print(f"Warning: Tried to add to a full union ({self.marriage_type}).")
+
+    def remove_member(self, primate: Primate):
+        """Removes a primate from the union and updates its state."""
+        self.members.discard(primate)
+        primate.union = None
+
+    def get_counts(self) -> dict:
+        """Counts the number of fertile males, females, and hermaphrodites."""
+        counts = {'female': 0, 'male': 0, 'hermaphrodite': 0}
+        for p in self.members:
+            if p.is_fertile and p.age_years * earth_year >= p.params.puberty_age_days:
+                if p.params.is_hermaphrodite:
+                    counts['hermaphrodite'] += 1
+                elif p.is_female:
+                    counts['female'] += 1
+                else:
+                    counts['male'] += 1
+        return counts
+
+    def is_viable_for_breeding(self, params: SimulationParameters) -> bool:
+        """Checks if this union can currently produce children."""
+        counts = self.get_counts()
+        if params.is_hermaphrodite:
+            return counts['hermaphrodite'] >= 2 # Need at least two hermaphrodites
+        else:
+            # Standard check for M/F species (including sequential)
+            return counts['male'] > 0 and counts['female'] > 0
+
+    def is_dissolved(self, params: SimulationParameters) -> bool:
+        """Checks if this union should be dissolved."""
+        if not self.members:
+            return True
+            
+        counts = self.get_counts()
+        if params.is_hermaphrodite:
+            return counts['hermaphrodite'] < 2
+        else:
+            # Check *all* members, not just fertile ones
+            all_males = any(not p.is_female for p in self.members)
+            all_females = any(p.is_female for p in self.members)
+            return not all_males or not all_females
+
 
 def calculate_carrying_capacity(params: SimulationParameters, locale: Locale) -> int:
     """
@@ -153,11 +213,11 @@ def calculate_carrying_capacity(params: SimulationParameters, locale: Locale) ->
     diet = params.diet_type.lower()
     
     if diet == "omnivore":
-        total_available_calories = locale.carnivore_calories + locale.herbivore_calories + locale.ruminant_calories
-    elif diet == "carnivore":
         total_available_calories = locale.carnivore_calories + locale.herbivore_calories
+    elif diet == "carnivore":
+        total_available_calories = locale.carnivore_calories
     elif diet == "herbivore":
-        total_available_calories = locale.herbivore_calories + locale.ruminant_calories
+        total_available_calories = locale.herbivore_calories
     elif diet == "ruminant":
         total_available_calories = locale.ruminant_calories
     elif diet == "autotroph":
