@@ -11,24 +11,24 @@ class Primate:
         self.params = params   # Store params to know species rules (e.g., lifespan, ageing direction)
         self.age_days: int = age_days          
         self.is_fertile: bool = is_initially_fertile
-        self.is_coupled: bool = False
         self.number_of_healthy_children: int = 0
+        self.union: Optional['Union'] = None  # Reference to the union this primate is in
 
     @property
     def age_years(self) -> float:
             return self.age_days / earth_year
-
+    
     @property
     def is_coupled(self) -> bool:
         """
         Property to check if the primate is in a union.
         """
         return self.union is not None
+    
 
     def __repr__(self) -> str:
         gender = "Female" if self.is_female else "Male"
         fertility = "Fertile" if self.is_fertile else "Sterile"
-        coupled_status = "Coupled" if self.is_coupled else "Uncoupled"
         return (f"<Primate | Gender: {gender}, Age: {self.age_years:.1f} yrs, "
                 f"Status: {fertility}, {coupled_status}, Children: {self.number_of_healthy_children}>")
 
@@ -219,11 +219,11 @@ def calculate_carrying_capacity(params: SimulationParameters, locale: Locale) ->
     elif diet == "herbivore":
         total_available_calories = locale.herbivore_calories
     elif diet == "ruminant":
-        total_available_calories = locale.ruminant_calories
+        total_available_calories = locale.ruminant_calories + locale.herbivore_calories
     elif diet == "autotroph":
         total_available_calories = locale.water_availability_m3
     else:
-        print(f"Warning: Unknown diet_type '{params.diet_type}'. Defaulting to omnivore.")
+        print(f"Warning: Unknown diet_type '{params.diet_type}'. They can eat everything!.")
         total_available_calories = locale.carnivore_calories + locale.herbivore_calories + locale.ruminant_calories
 
     if params.calories_needed_per_primate <= 0:

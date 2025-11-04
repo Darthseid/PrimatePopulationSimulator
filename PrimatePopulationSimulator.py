@@ -1,17 +1,17 @@
 ﻿import random
 import math
 import json
-from matplotlib.pylab import f
 import numpy as np
 import matplotlib.pyplot as plt
-import time  # Add this import at the top
+import time
+from typing import List, Optional
 
-from PopulationObjects import Primate, Locale, convert_years_to_string
+from PopulationObjects import Primate, Locale, Union, convert_years_to_string
 from PopulationObjects import SimulationParameters
 from PopulationObjects import calculate_age_based_fertility, calculate_carrying_capacity
 
 earth_year = 365.2422
-starting_population = 100
+starting_population = 500
 
 class PrimateSimulation:
     """
@@ -22,6 +22,7 @@ class PrimateSimulation:
         self.locale = locale
         self.population: list[Primate] = []
         self.current_day = 0
+        self.unions: list[Union] = [] # List to store all active unions
         self.history = []
         
         self.carrying_capacity = calculate_carrying_capacity(self.params, self.locale)
@@ -105,6 +106,105 @@ class PrimateSimulation:
             )
             self.population.append(primate)
         print(f"Initial population created: {len(self.population)} {population_name}.")
+
+    def _find_union_for_primate(self, primate: Primate, eligible_pool: List[Primate]):
+        """
+        This is the new "Coupling" function.
+        It finds a partner or existing union for the given primate.
+        """
+        marriage_type = "monogamy"
+
+        # --- Asexual "Union" (e.g., Treants) ---
+        if marriage_type == "asexual":
+            if self.params.is_hermaphrodite:
+                new_union = Union(marriage_type="asexual", max_size=1)
+                new_union.add_member(primate)
+                self.unions.append(new_union)
+            return # Asexual non-hermaphrodites can't couple
+
+        # --- Find Potential Partners ---
+        # Look for partners who are not the primate itself and are not already coupled
+        potential_partners = []
+        for partner in eligible_pool:
+            if partner is primate or partner.union is not None:
+                continue
+            
+            # Find opposite sex (or any other hermaphrodite)
+            if (self.params.is_hermaphrodite and partner.params.His_hermaphrodite) or \
+               (primate.is_female != partner.is_female):
+                potential_partners.append(partner)
+
+        if not potential_partners:
+            return # No partners available
+
+        # Sort partners by closest age
+        potential_partners.sort(key=lambda p: abs(p.age_days - primate.age_days))
+        best_partner = potential_partners[0]
+        
+        # --- Monogamy ---
+        if marriage_type == "monogamy":
+            new_union = Union(marriage_type="monogamy", max_size=2)
+            new_union.add_member(primate)
+            new_union.add_member(best_partner)
+            self.unions.append(new_union)
+            return
+
+        # --- Polygyny (Male joins existing, or forms new) ---
+        if marriage_type == "polygyny":
+            if not primate.is_female: # Male is seeking
+                # Males form new unions
+                new_union = Union(marriage_type="polygyny", max_size=5)
+                new_union.add_member(primate)
+                new_union.add_member(best_partner)
+                self.unions.append(new_union)
+            else: # Female is seeking
+                # Try to join an existing union with a male
+                for union in self.unions:
+                    if union.marriage_type == "polygyny" and len(union.members) < union.max_size:
+                        union.add_member(primate)
+                        return
+                # If no unions to join, form a new one with the best partner
+                new_union = Union(marriage_type="polygyny", max_size=5)
+                new_union.add_member(best_partner) # Add the male first
+                new_union.add_member(primate)
+                self.unions.append(new_union)
+            return
+
+        # --- Polyandry (Female joins existing, or forms new) ---
+        if marriage_type == "polyandry":
+            if primate.is_female: # Female is seeking
+                # Females form new unions
+                new_union = Union(marriage_type="polyandry", max_size=5)
+                new_union.add_member(primate)
+                new_union.add_member(best_partner)
+                self.unions.append(new_union)
+            else: # Male is seeking
+                # Try to join an existing union with a female
+                for union in self.unions:
+                    if union.marriage_type == "polyandry" and len(union.members) < union.max_size:
+                        union.add_member(primate)
+                        return
+                # If no unions to join, form a new one with the best partner
+                new_union = Union(marriage_type="polyandry", max_size=5)
+                new_union.add_member(best_partner) # Add the female first
+                new_union.add_member(primate)
+                self.unions.append(new_union)
+            return
+
+        # --- Polygamy (Anyone can join anything) ---
+        if marriage_type == "polygamy":
+            # Try to join any non-full existing union
+            for union in self.unions:
+                if union.marriage_type == "polygamy" and len(union.members) < union.max_size:
+                    union.add_member(primate)
+                    return
+            # If none, form a new one
+            new_union = Union(marriage_type="polygamy", max_size=9)
+            new_union.add_member(primate)
+            new_union.add_member(best_partner)
+            self.unions.append(new_union)
+            return
+
 
     def run_simulation(self, num_years: float):
         start_time = time.time()  # Add this at the start of run_simulation
@@ -214,6 +314,17 @@ class PrimateSimulation:
                     if primate.is_fertile and primate.age_years * earth_year >= self.params.puberty_age_days:
                         fertile_male_count += 1
             
+            # --- 2. UNION MAINTENANCE ---
+            surviving_unions = []
+            for union in self.unions:
+                if union.is_dissolved(self.params):
+                    for member in union.members:
+                        member.union = None # Uncouple all surviving members
+                else:
+                    surviving_unions.append(union)
+            self.unions = surviving_unions
+
+            
             # 3. Calculate this cycle's population-wide modifiers
             if self.params.is_hermaphrodite:
                 female_count = len(new_population) # Recalculate based on survivors
@@ -233,14 +344,45 @@ class PrimateSimulation:
             adjusted_adult_mortality = self.params.per_cycle_adult_mortality_rate * (1.0 + (1.0 -  genetic_adjuster)) ** 1.59 #This caps it at a 3x multiplier when genetic adjuster is very low.
             adjusted_infant_mortality = self.params.infant_mortality_rate * (1.0 + (1.0 -  genetic_adjuster)) ** 1.59
 
+            # --- 4. COUPLING LOGIC ---
+            # Get all uncoupled, fertile individuals who are of age
+            eligible_for_coupling = [
+                p for p in new_population 
+                if p.union is None and 
+                   p.is_fertile and 
+                   p.age_years * earth_year >= self.params.puberty_age_days
+            ]
+            if eligible_for_coupling:             
+                # Create a temporary pool of eligible partners, excluding post-menopausal females
+                partner_pool = {
+                    p for p in eligible_for_coupling 
+                    if not (p.is_female and p.age_years * earth_year >= self.params.menopause_age_days)
+                }
+
+                for primate in eligible_for_coupling:
+                    if primate.union is not None:
+                        continue # Already coupled in this loop
+                    
+                    # Skip if post-menopausal female
+                    if primate.is_female and primate.age_years * earth_year >= self.params.menopause_age_days:
+                        continue
+                        
+                    if not (random.random() < marriage_chance):
+                        continue
+                        
+                    self._find_union_for_primate(primate, partner_pool)
+                    # Note: _find_union_for_primate modifies partner.union,
+                    # so they will be skipped when the loop gets to them.
+
             # 4. Birth and non-age-related Death loop
             for mother in new_population:
-                if mother.age_years * earth_year >= self.params.puberty_age_days and not mother.is_coupled:
-                    mother.is_coupled = random.random() < marriage_chance
                 
                 # We use .age_years property, which works for all species
                 is_eligible = (
-                    mother.is_female and mother.is_fertile and mother.is_coupled and
+                    mother.is_female and 
+                    mother.is_fertile and 
+                    mother.union is not None and  # Check if in a union
+                    mother.union.is_viable_for_breeding(self.params) and # Check if union can breed
                     self.params.puberty_age_days <= mother.age_years * earth_year < self.params.menopause_age_days and
                     mother.number_of_healthy_children < self.params.max_kids_per_primate
                 )
@@ -389,16 +531,7 @@ class PrimateSimulation:
         final_population = len(self.population)
         
         calculated_birth_rate = (total_births / average_population / total_duration_years) * 1000 if average_population > 0 and total_duration_years > 0 else 0
-        calculated_death_rate = (total_deaths / average_population / total_duration_years) * 1000 if average_population > 0 and total_duration_years > 0 else 0
-        
-        median_age_years = 0.0
-        if final_population > 0:
-            sorted_ages_years = sorted([p.age_years for p in self.population])
-            mid_index = final_population // 2
-            if final_population % 2 == 0: # Average of two middle elements for even population
-                median_age_years = (sorted_ages_years[mid_index - 1] + sorted_ages_years[mid_index]) / 2
-            else:
-                median_age_years = sorted_ages_years[mid_index] # Middle element for odd population
+        calculated_death_rate = (total_deaths / average_population / total_duration_years) * 1000 if average_population > 0 and total_duration_years > 0 else 0       
 
         print(f"Final Population: {final_population:,d}")
         print("It has been", convert_years_to_string(total_duration))
@@ -453,6 +586,7 @@ class PrimateSimulation:
             print(f"Births This Cycle: {births_this_cycle:,d}")
             print(f"Deaths This Cycle: {deaths_this_cycle:,d}")
             print(f"Potential Mothers: {potential_mother_counter:,d}")
+            print(f"Breeding Unions: {len(self.unions):,d}")
 
         self.history.append({'cycle': cycle, 'population': total_pop, 'females': total_pop if self.params.is_hermaphrodite else females, 'males': 0 if self.params.is_hermaphrodite else males, 'current_day': self.current_day})
 
@@ -591,9 +725,9 @@ class PrimateSimulation:
         plt.show()
 
 if __name__ == "__main__":
-    sim_params = SimulationParameters.from_json("demographics.json", "treant")
-    sim_locale = Locale.from_json("locales.json", "greenland_coast")
+    sim_params = SimulationParameters.from_json("demographics.json", "neanderthal")
+    sim_locale = Locale.from_json("locales.json", "mount_everest")
     #simulation = PrimateSimulation(params=sim_params, locale=sim_locale, scenario_name="bounty_mutiny")
     simulation = PrimateSimulation(params=sim_params, locale=sim_locale) # For a random start
-    simulation.run_simulation(num_years=400.0)
+    simulation.run_simulation(num_years=100.0)
 
