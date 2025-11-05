@@ -508,6 +508,15 @@ class PrimateSimulation:
                 print(f"\n--- Simulation Terminated Early on cycle {cycle} ---")
                 print("Reason: Population is extinct.")
                 break
+
+            alive_set = set(self.population)
+            for union in self.unions:
+                for member in union.members[:]:
+                    if member not in alive_set:
+                        union.remove_member(member)
+
+            # Remove dissolved/empty unions
+            self.unions = [u for u in self.unions if not u.is_dissolved(self.params)]
                 
             cycle += 1
 
@@ -735,7 +744,7 @@ class PrimateSimulation:
         plt.show()
 
 if __name__ == "__main__":
-    sim_params = SimulationParameters.from_json("demographics.json", "medieval_human")
+    sim_params = SimulationParameters.from_json("demographics.json", "goblin")
     sim_locale = Locale.from_json("locales.json", "mount_everest")
     #simulation = PrimateSimulation(params=sim_params, locale=sim_locale, scenario_name="bounty_mutiny")
     simulation = PrimateSimulation(params=sim_params, locale=sim_locale) # For a random start
