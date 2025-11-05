@@ -161,14 +161,19 @@ class Union:
             self.members.append(primate)
             primate.union = self  # Set back-reference to union
 
-    def remove_member(self, primate: Primate):
+    # In Union class
+    def remove_member(self, primate):
         if primate in self.members:
             self.members.remove(primate)
-            primate.union = None  # Clear back-reference
+            primate.union = None
+        if not self.members:  # If empty, mark as dissolved
+            self.dissolved = True
 
     def is_dissolved(self, params) -> bool:
         """Check if union should be dissolved"""
         # Union is dissolved if empty or has too few members
+        if hasattr(self, "dissolved") and self.dissolved:
+            return True
         if len(self.members) == 0:
             return True
             
@@ -195,12 +200,13 @@ class Union:
                 
         return True
 
+    # In Union class
     def __repr__(self):
-        member_info = []
-        for m in self.members:
-            sex = "F" if m.is_female else "M"
-            member_info.append(f"{sex}({m.age_years:.1f}y)({m.number_of_healthy_children}y)")
-        return f"<Union ({self.marriage_type} {len(self.members)}/{self.max_size}) | Members: {member_info}>"
+        member_descriptions = ", ".join(
+        [f"{'F' if m.is_female else 'M'}({m.age_years:.0f} {m.number_of_healthy_children})" for m in self.members]
+        )
+        return f"<Union ({self.marriage_type} {len(self.members)}/{self.max_size}) | Members: [{member_descriptions}]>"
+
 
 def calculate_carrying_capacity(params: SimulationParameters, locale: Locale) -> int:
     """

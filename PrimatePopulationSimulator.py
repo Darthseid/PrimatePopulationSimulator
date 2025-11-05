@@ -112,7 +112,7 @@ class PrimateSimulation:
         This is the new "Coupling" function.
         It finds a partner or existing union for the given primate.
         """
-        marriage_type = "monogamy"
+        marriage_type = "polyandry"
 
         # --- Asexual "Union" (e.g., Treants) ---
         if marriage_type == "asexual":
@@ -480,7 +480,20 @@ class PrimateSimulation:
             if len(self.population) > self.carrying_capacity:
                 num_to_cull = len(self.population) - self.carrying_capacity
                 death_counter += num_to_cull
-                self.population = random.sample(self.population, self.carrying_capacity)
+                
+                # Get the list of primates to cull
+                primates_to_cull = set(random.sample(self.population, num_to_cull))
+                
+                # Remove culled primates from their unions
+                for primate in primates_to_cull:
+                    if primate.union:
+                        primate.union.remove_member(primate)
+                
+                # Remove culled primates from population
+                self.population = [p for p in self.population if p not in primates_to_cull]
+                
+                # Clean up any dissolved unions
+                self.unions = [union for union in self.unions if not union.is_dissolved(self.params)]
 
             total_births += birth_counter
             total_deaths += death_counter
@@ -508,6 +521,15 @@ class PrimateSimulation:
                 print(f"\n--- Simulation Terminated Early on cycle {cycle} ---")
                 print("Reason: Population is extinct.")
                 break
+
+            alive_set = set(self.population)
+            for union in self.unions:
+                for member in union.members[:]:
+                    if member not in alive_set:
+                        union.remove_member(member)
+
+            # Remove dissolved/empty unions
+            self.unions = [u for u in self.unions if not u.is_dissolved(self.params)]
                 
             cycle += 1
 
@@ -557,7 +579,11 @@ class PrimateSimulation:
         print(f"Crude Death Rate (per 1,000/year, based on avg pop): {calculated_death_rate:.2f}")
         print(f"Rate of Natural Increase: {calculated_birth_rate - calculated_death_rate:.2f} per 1,000/year")
         print(f"Population Change: {(len(self.population) / initial_pop_size * 100):.2f}%" if initial_pop_size > 0 else "N/A")
-        print(self.unions)
+        # Print unions with limit
+        if len(self.unions) > 30:
+            print(self.unions[:30])
+        else:
+            print(self.unions)
         
         self.display_population_pyramid()
 
@@ -735,8 +761,8 @@ class PrimateSimulation:
         plt.show()
 
 if __name__ == "__main__":
-    sim_params = SimulationParameters.from_json("demographics.json", "medieval_human")
-    sim_locale = Locale.from_json("locales.json", "mount_everest")
+    sim_params = SimulationParameters.from_json("demographics.json", "modern_human")
+    sim_locale = Locale.from_json("locales.json", "greenland_coast")
     #simulation = PrimateSimulation(params=sim_params, locale=sim_locale, scenario_name="bounty_mutiny")
     simulation = PrimateSimulation(params=sim_params, locale=sim_locale) # For a random start
     simulation.run_simulation(num_years=100.0)
