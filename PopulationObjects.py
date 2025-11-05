@@ -1,7 +1,7 @@
 import math
 import numpy as np
 import json
-from typing import Optional, Set
+from typing import Optional, Set, List
 
 earth_year = 365.2422  # Constants
 
@@ -29,6 +29,7 @@ class Primate:
     def __repr__(self) -> str:
         gender = "Female" if self.is_female else "Male"
         fertility = "Fertile" if self.is_fertile else "Sterile"
+        coupled_status = "Coupled" if self.is_coupled else "Single"
         return (f"<Primate | Gender: {gender}, Age: {self.age_years:.1f} yrs, "
                 f"Status: {fertility}, {coupled_status}, Children: {self.number_of_healthy_children}>")
 
@@ -150,68 +151,56 @@ class Union:
     """
     Represents a relationship (couple, harem, etc.) for breeding.
     """
-    def __init__(self, marriage_type: str, max_size: int):
-        self.members: Set[Primate] = set()
-        self.marriage_type: str = marriage_type
-        self.max_size: int = max_size
+    def __init__(self, marriage_type: str = "monogamy", max_size: int = 2):
+        self.marriage_type = marriage_type
+        self.max_size = max_size
+        self.members: List[Primate] = []
 
     def add_member(self, primate: Primate):
-        """Adds a primate to the union and updates the primate's state."""
         if len(self.members) < self.max_size:
-            self.members.add(primate)
-            primate.union = self
-        else:
-            print(f"Warning: Tried to add to a full union ({self.marriage_type}).")
+            self.members.append(primate)
+            primate.union = self  # Set back-reference to union
 
     def remove_member(self, primate: Primate):
-        """Removes a primate from the union and updates its state."""
-        self.members.discard(primate)
-        primate.union = None
+        if primate in self.members:
+            self.members.remove(primate)
+            primate.union = None  # Clear back-reference
 
-    def get_counts(self) -> dict:
-        """Counts the number of fertile males, females, and hermaphrodites."""
-        counts = {'female': 0, 'male': 0, 'hermaphrodite': 0}
-        for p in self.members:
-            if p.is_fertile and p.age_years * earth_year >= p.params.puberty_age_days:
-                if p.params.is_hermaphrodite:
-                    counts['hermaphrodite'] += 1
-                elif p.is_female:
-                    counts['female'] += 1
-                else:
-                    counts['male'] += 1
-        return counts
-
-    def is_viable_for_breeding(self, params: SimulationParameters) -> bool:
-        """Checks if this union can currently produce children."""
-        counts = self.get_counts()
-        if params.is_hermaphrodite:
-            return counts['hermaphrodite'] >= 2 # Need at least two hermaphrodites
-        else:
-            # Standard check for M/F species (including sequential)
-            return counts['male'] > 0 and counts['female'] > 0
-
-    def is_dissolved(self, params: SimulationParameters) -> bool:
-        """Checks if this union should be dissolved."""
-        if not self.members:
+    def is_dissolved(self, params) -> bool:
+        """Check if union should be dissolved"""
+        # Union is dissolved if empty or has too few members
+        if len(self.members) == 0:
             return True
             
-        counts = self.get_counts()
-        if params.is_hermaphrodite:
-            return counts['hermaphrodite'] < 2
-        else:
-            # Check *all* members, not just fertile ones
-            all_males = any(not p.is_female for p in self.members)
-            all_females = any(p.is_female for p in self.members)
-            return not all_males or not all_females
-
-    def __repr__(self) -> str:
-        """Provides a human-readable string representation for printing."""
-        member_list = []
-        for p in self.members:
-            gender = "H" if p.params.is_hermaphrodite else ("F" if p.is_female else "M")
-            member_list.append(f"{gender}({p.age_years:.1f}y)({p.number_of_healthy_children:.1f}y) ")
+        if self.marriage_type == "monogamy" and len(self.members) < 2:
+            return True
             
-        return f"<Union ({self.marriage_type} {len(self.members)}/{self.max_size}) | Members: [{', '.join(member_list)}]>"
+        # Check if any member is beyond menopause (for breeding unions)
+        for member in self.members:
+            if member.is_female and member.age_years * earth_year >= params.menopause_age_days:
+                return True
+                
+        return False
+
+    def is_viable_for_breeding(self, params) -> bool:
+        """Check if union can produce children"""
+        if len(self.members) < 2:
+            return False
+            
+        if not params.is_hermaphrodite:  # For non-hermaphrodites, need at least one of each sex
+            has_female = any(m.is_female for m in self.members)
+            has_male = any(not m.is_female for m in self.members)
+            if not (has_female and has_male):
+                return True
+                
+        return True
+
+    def __repr__(self):
+        member_info = []
+        for m in self.members:
+            sex = "F" if m.is_female else "M"
+            member_info.append(f"{sex}({m.age_years:.1f}y)({m.number_of_healthy_children}y)")
+        return f"<Union ({self.marriage_type} {len(self.members)}/{self.max_size}) | Members: {member_info}>"
 
 def calculate_carrying_capacity(params: SimulationParameters, locale: Locale) -> int:
     """

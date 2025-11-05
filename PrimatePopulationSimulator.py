@@ -130,7 +130,7 @@ class PrimateSimulation:
                 continue
             
             # Find opposite sex (or any other hermaphrodite)
-            if (self.params.is_hermaphrodite and partner.params.His_hermaphrodite) or \
+            if (self.params.is_hermaphrodite and partner.params.is_hermaphrodite) or \
                (primate.is_female != partner.is_female):
                 potential_partners.append(partner)
 
@@ -300,8 +300,13 @@ class PrimateSimulation:
                             is_initially_fertile=random.random() > self.params.sterile_chance 
                         )
                         newborns.append(respawned_male) # Add to newborns list
+                     # --- GHOST UNION FIX 1: Remove from union on old age death ---
+                    if primate.union:
+                        primate.union.remove_member(primate)              
                     continue  # Primate died, don't add to new population
-                
+              
+                self.unions = [union for union in self.unions if not union.is_dissolved(self.params)]  # After processing deaths, clean up dissolved unions:               
+
                 # 2. Primate survives, add to new population list and count stats
                 new_population.append(primate)
                 
@@ -461,8 +466,12 @@ class PrimateSimulation:
                             age_days=4748, #Age 13 years
                             is_initially_fertile=random.random() > self.params.sterile_chance 
                         )
+                    if primate.union:
+                        primate.union.remove_member(primate) 
                 else:
                     final_survivors.append(primate)
+
+            self.unions = [union for union in self.unions if not union.is_dissolved(self.params)] 
             
             # 6. Combine survivors and newborns
             self.population = final_survivors + newborns
@@ -726,7 +735,7 @@ class PrimateSimulation:
         plt.show()
 
 if __name__ == "__main__":
-    sim_params = SimulationParameters.from_json("demographics.json", "neanderthal")
+    sim_params = SimulationParameters.from_json("demographics.json", "medieval_human")
     sim_locale = Locale.from_json("locales.json", "mount_everest")
     #simulation = PrimateSimulation(params=sim_params, locale=sim_locale, scenario_name="bounty_mutiny")
     simulation = PrimateSimulation(params=sim_params, locale=sim_locale) # For a random start
