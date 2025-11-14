@@ -149,46 +149,52 @@ class PrimateSimulation:
             self.unions.append(new_union)
             return
 
-        # --- Polygyny (Male joins existing, or forms new) ---
+         # --- Polygyny (Male seeks, Female joins) ---
         if marriage_type == "polygyny":
             if not primate.is_female: # Male is seeking
                 # Males form new unions
                 new_union = Union(marriage_type="polygyny", max_size=5)
                 new_union.add_member(primate)
-                new_union.add_member(best_partner)
+                new_union.add_member(best_partner) # Add one female
                 self.unions.append(new_union)
             else: # Female is seeking
-                # Try to join an existing union with a male
+                # Try to join an existing union that has a male and space
                 for union in self.unions:
-                    if union.marriage_type == "polygyny" and len(union.members) < union.max_size:
+                    if union.marriage_type == "polygyny" and \
+                       len(union.members) < union.max_size and \
+                       union.has_males(self.params): # Ensure union has a male
                         union.add_member(primate)
                         return
-                # If no unions to join, form a new one with the best partner
-                new_union = Union(marriage_type="polygyny", max_size=5)
-                new_union.add_member(best_partner) # Add the male first
-                new_union.add_member(primate)
-                self.unions.append(new_union)
+                # If no unions to join, form a new one with the best partner (who must be male)
+                if not best_partner.is_female:
+                    new_union = Union(marriage_type="polygyny", max_size=5)
+                    new_union.add_member(best_partner) # Add the male first
+                    new_union.add_member(primate)
+                    self.unions.append(new_union)
             return
 
-        # --- Polyandry (Female joins existing, or forms new) ---
+        # --- Polyandry (Female seeks, Male joins) ---
         if marriage_type == "polyandry":
             if primate.is_female: # Female is seeking
                 # Females form new unions
                 new_union = Union(marriage_type="polyandry", max_size=5)
                 new_union.add_member(primate)
-                new_union.add_member(best_partner)
+                new_union.add_member(best_partner) # Add one male
                 self.unions.append(new_union)
             else: # Male is seeking
-                # Try to join an existing union with a female
+                # Try to join an existing union that has a female and space
                 for union in self.unions:
-                    if union.marriage_type == "polyandry" and len(union.members) < union.max_size:
+                    if union.marriage_type == "polyandry" and \
+                       len(union.members) < union.max_size and \
+                       union.has_females(self.params): # Ensure union has a female
                         union.add_member(primate)
                         return
-                # If no unions to join, form a new one with the best partner
-                new_union = Union(marriage_type="polyandry", max_size=5)
-                new_union.add_member(best_partner) # Add the female first
-                new_union.add_member(primate)
-                self.unions.append(new_union)
+                # If no unions to join, form a new one with the best partner (who must be female)
+                if best_partner.is_female:
+                    new_union = Union(marriage_type="polyandry", max_size=5)
+                    new_union.add_member(best_partner) # Add the female first
+                    new_union.add_member(primate)
+                    self.unions.append(new_union)
             return
 
         # --- Polygamy (Anyone can join anything) ---
@@ -581,7 +587,7 @@ class PrimateSimulation:
         print(f"Population Change: {(len(self.population) / initial_pop_size * 100):.2f}%" if initial_pop_size > 0 else "N/A")
         # Print unions with limit
         if len(self.unions) > 30:
-            print(self.unions[:30])
+            print(self.unions[:90])
         else:
             print(self.unions)
         

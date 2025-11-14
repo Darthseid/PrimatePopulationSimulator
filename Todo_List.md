@@ -11,6 +11,7 @@
 ⦁	Test how different marriage patterns affect population growth
 
 ⦁	Add Uneven Hybrids
+⦁	Add Mixed Populations
 
 **Bugs:**
 

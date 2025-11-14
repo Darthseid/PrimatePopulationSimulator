@@ -161,6 +161,7 @@ class Union:
             self.members.append(primate)
             primate.union = self  # Set back-reference to union
 
+
     # In Union class
     def remove_member(self, primate):
         if primate in self.members:
@@ -187,17 +188,35 @@ class Union:
                 
         return False
 
+    def has_females(self, params) -> bool:
+        """Checks if the union has at least one female."""
+        if params.is_hermaphrodite:
+            return len(self.members) > 0
+        return any(m.is_female for m in self.members)
+
+    def has_males(self, params) -> bool:
+        """Checks if the union has at least one male."""
+        if params.is_hermaphrodite:
+            return len(self.members) > 0
+        return any(not m.is_female for m in self.members)
+
     def is_viable_for_breeding(self, params) -> bool:
         """Check if union can produce children"""
+        if self.marriage_type == "asexual":
+            return len(self.members) > 0
+            
         if len(self.members) < 2:
             return False
             
-        if not params.is_hermaphrodite:  # For non-hermaphrodites, need at least one of each sex
-            has_female = any(m.is_female for m in self.members)
-            has_male = any(not m.is_female for m in self.members)
-            if not (has_female and has_male):
-                return True
-                
+        if params.is_hermaphrodite:
+            return len(self.members) >= 2 # Need at least two hermaphrodites
+        
+        # --- BUG FIX ---
+        # Correctly call the methods with (params)
+        if not (self.has_females(params) and self.has_males(params)):
+            return False
+        # --- END FIX ---
+            
         return True
 
     # In Union class
