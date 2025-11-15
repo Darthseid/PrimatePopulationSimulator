@@ -155,12 +155,12 @@ class Union:
         self.marriage_type = marriage_type
         self.max_size = max_size
         self.members: List[Primate] = []
+        self.dissolved = False   # <-- CRUCIAL FIX
 
     def add_member(self, primate: Primate):
         if len(self.members) < self.max_size:
             self.members.append(primate)
             primate.union = self  # Set back-reference to union
-
 
     # In Union class
     def remove_member(self, primate):
@@ -171,22 +171,17 @@ class Union:
             self.dissolved = True
 
     def is_dissolved(self, params) -> bool:
-        """Check if union should be dissolved"""
-        # Union is dissolved if empty or has too few members
-        if hasattr(self, "dissolved") and self.dissolved:
+        """Hard correctness rules."""
+        if self.dissolved:
             return True
+
         if len(self.members) == 0:
             return True
-            
-        if self.marriage_type == "monogamy" and len(self.members) < 2:
-            return True
-            
-        # Check if any member is beyond menopause (for breeding unions)
-        for member in self.members:
-            if member.is_female and member.age_years * earth_year >= params.menopause_age_days:
-                return True
-                
-        return False
+
+        if self.marriage_type == "asexual":
+            return len(self.members) != 1
+
+        return not self.has_females(params) or not self.has_males(params)
 
     def has_females(self, params) -> bool:
         """Checks if the union has at least one female."""

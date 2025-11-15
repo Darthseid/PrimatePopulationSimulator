@@ -107,12 +107,11 @@ class PrimateSimulation:
             self.population.append(primate)
         print(f"Initial population created: {len(self.population)} {population_name}.")
 
-    def _find_union_for_primate(self, primate: Primate, eligible_pool: List[Primate]):
+    def _find_union_for_primate(self, primate: Primate, eligible_pool: List[Primate], marriage_type):
         """
         This is the new "Coupling" function.
         It finds a partner or existing union for the given primate.
         """
-        marriage_type = "polyandry"
 
         # --- Asexual "Union" (e.g., Treants) ---
         if marriage_type == "asexual":
@@ -175,21 +174,19 @@ class PrimateSimulation:
 
         # --- Polyandry (Female seeks, Male joins) ---
         if marriage_type == "polyandry":
-            if primate.is_female: # Female is seeking
-                # Females form new unions
-                new_union = Union(marriage_type="polyandry", max_size=5)
-                new_union.add_member(primate)
-                new_union.add_member(best_partner) # Add one male
-                self.unions.append(new_union)
-            else: # Male is seeking
-                # Try to join an existing union that has a female and space
+            if primate.is_female:  # Female is seeking
+                if not best_partner.is_female:
+                    new_union = Union(marriage_type="polyandry", max_size=5)
+                    new_union.add_member(primate)
+                    new_union.add_member(best_partner)
+                    self.unions.append(new_union)
+            else:  # Male is seeking
+                # Try to join an existing union with a female and space
                 for union in self.unions:
-                    if union.marriage_type == "polyandry" and \
-                       len(union.members) < union.max_size and \
-                       union.has_females(self.params): # Ensure union has a female
+                    if union.marriage_type == "polyandry" and len(union.members) < union.max_size and union.has_females(self.params):
                         union.add_member(primate)
                         return
-                # If no unions to join, form a new one with the best partner (who must be female)
+                # If no union to join, form a new one with the best partner (who must be female)
                 if best_partner.is_female:
                     new_union = Union(marriage_type="polyandry", max_size=5)
                     new_union.add_member(best_partner) # Add the female first
@@ -381,7 +378,7 @@ class PrimateSimulation:
                     if not (random.random() < marriage_chance):
                         continue
                         
-                    self._find_union_for_primate(primate, partner_pool)
+                    self._find_union_for_primate(primate, partner_pool, "polyandry")
                     # Note: _find_union_for_primate modifies partner.union,
                     # so they will be skipped when the loop gets to them.
 
@@ -587,7 +584,7 @@ class PrimateSimulation:
         print(f"Population Change: {(len(self.population) / initial_pop_size * 100):.2f}%" if initial_pop_size > 0 else "N/A")
         # Print unions with limit
         if len(self.unions) > 30:
-            print(self.unions[:90])
+            print(self.unions[:30])
         else:
             print(self.unions)
         
