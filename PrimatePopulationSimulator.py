@@ -11,7 +11,7 @@ from PopulationObjects import SimulationParameters
 from PopulationObjects import calculate_age_based_fertility, calculate_carrying_capacity
 
 earth_year = 365.2422
-starting_population = 500
+starting_population = 20000
 
 class PrimateSimulation:
     """
@@ -349,6 +349,11 @@ class PrimateSimulation:
             genetic_adjuster = min(1.0, breeding_population / 50.0)
             genetic_adjuster *= self.genetic_diversity
 
+            if self.locale.area_km2 > 0: #Divide by Zero safety check.
+                inhabitants_per_sq_km = len(new_population) / self.locale.area_km2
+                density_penalty = min(1, 100 / inhabitants_per_sq_km) # That way below 100/km² has no advantage.
+                genetic_adjuster *= density_penalty
+
             adjusted_adult_mortality = self.params.per_cycle_adult_mortality_rate * (1.0 + (1.0 -  genetic_adjuster)) ** 1.59 #This caps it at a 3x multiplier when genetic adjuster is very low.
             adjusted_infant_mortality = self.params.infant_mortality_rate * (1.0 + (1.0 -  genetic_adjuster)) ** 1.59
 
@@ -378,7 +383,7 @@ class PrimateSimulation:
                     if not (random.random() < marriage_chance):
                         continue
                         
-                    self._find_union_for_primate(primate, partner_pool, "polyandry")
+                    self._find_union_for_primate(primate, partner_pool, "monogamy")
                     # Note: _find_union_for_primate modifies partner.union,
                     # so they will be skipped when the loop gets to them.
 
@@ -764,9 +769,9 @@ class PrimateSimulation:
         plt.show()
 
 if __name__ == "__main__":
-    sim_params = SimulationParameters.from_json("demographics.json", "modern_human")
-    sim_locale = Locale.from_json("locales.json", "greenland_coast")
+    sim_params = SimulationParameters.from_json("demographics.json", "medieval_human")
+    sim_locale = Locale.from_json("locales.json", "nauru")
     #simulation = PrimateSimulation(params=sim_params, locale=sim_locale, scenario_name="bounty_mutiny")
     simulation = PrimateSimulation(params=sim_params, locale=sim_locale) # For a random start
-    simulation.run_simulation(num_years=100.0)
+    simulation.run_simulation(num_years=30.0)
 

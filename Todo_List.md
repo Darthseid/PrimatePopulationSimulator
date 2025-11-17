@@ -16,6 +16,3 @@
 **Bugs:**
 
 Total Fertility Rate is often inaccurate.
-
-Polyandry and Polygyny produce single-sex unions.
-

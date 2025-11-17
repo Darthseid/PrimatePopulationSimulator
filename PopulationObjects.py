@@ -55,7 +55,7 @@ class Locale:
     def __init__(self, **params):
         self.name: str = params.get("name", "Unknown")
         self.biome_type: str = params.get("biome_type", "Temperate")
-        self.area_sq_km: float = params.get("area_sq_km", 0)
+        self.area_km2: float = params.get("area_km2", 0)
         self.water_availability_m3: float = params.get("water_availability_m3", 0)
 
         self.carnivore_calories: int = params.get("carnivore_calories", 0)
