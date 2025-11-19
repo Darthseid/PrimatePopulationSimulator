@@ -5,7 +5,6 @@
 ⦁	Add disasters like famines
 
 ⦁	Have caloric needs be determined by sex and age
-⦁	Have male fertility matter
 ⦁	Test how different marriage patterns affect population growth
 
 ⦁	Add Uneven Hybrids

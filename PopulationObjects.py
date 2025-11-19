@@ -17,6 +17,23 @@ class Primate:
     @property
     def age_years(self) -> float:
             return self.age_days / earth_year
+
+    def get_caloric_need(self) -> float:
+        """
+        Calculates the individual daily caloric/resource need for this primate.
+        """
+        need = self.params.calories_needed_per_primate
+
+        if self.is_female:
+            need *= 0.9
+            
+        # We use age_years * earth_year to get biological age in days
+        biological_age_days = self.age_years * earth_year
+        if biological_age_days < self.params.puberty_age_days:
+            need *= 0.5
+        if biological_age_days > self.params.lifespan_days:
+            need *= 0.75
+        return need
     
     @property
     def is_coupled(self) -> bool:
@@ -222,7 +239,7 @@ class Union:
         return f"<Union ({self.marriage_type} {len(self.members)}/{self.max_size}) | Members: [{member_descriptions}]>"
 
 
-def calculate_carrying_capacity(params: SimulationParameters, locale: Locale) -> int:
+def calculate_total_available_resources(params: SimulationParameters, locale: Locale) -> int:
     """
     Calculates the carrying capacity based on the species' diet and the locale's calorie availability.
     """
@@ -243,10 +260,7 @@ def calculate_carrying_capacity(params: SimulationParameters, locale: Locale) ->
         print(f"Warning: Unknown diet_type '{params.diet_type}'. They can eat everything!.")
         total_available_calories = locale.carnivore_calories + locale.herbivore_calories + locale.ruminant_calories
 
-    if params.calories_needed_per_primate <= 0:
-        return math.factorial(19)  # Effectively infinite carrying capacity if primates need 0 calories
-        
-    return math.floor(total_available_calories / params.calories_needed_per_primate)
+    return total_available_calories
 
 
 def convert_years_to_string(years_float: float) -> str:

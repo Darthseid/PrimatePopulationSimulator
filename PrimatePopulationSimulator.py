@@ -8,7 +8,7 @@ from typing import List, Optional
 
 from PopulationObjects import Primate, Locale, Union, convert_years_to_string
 from PopulationObjects import SimulationParameters
-from PopulationObjects import calculate_age_based_fertility, calculate_carrying_capacity
+from PopulationObjects import calculate_age_based_fertility, calculate_total_available_resources
 
 earth_year = 365.2422
 starting_population = 200
@@ -25,7 +25,8 @@ class PrimateSimulation:
         self.unions: list[Union] = [] # List to store all active unions
         self.history = []
         
-        self.carrying_capacity = calculate_carrying_capacity(self.params, self.locale)
+        self.total_available_resources = calculate_total_available_resources(self.params, self.locale)
+        self.carrying_capacity = 0
         print(f"Locale: {self.locale.name} ({self.locale.biome_type})")  # Calculate carrying capacity based on species and locale
         print(f"Species: {self.params.species_name} ({self.params.diet_type})")
         if self.params.is_hermaphrodite:
@@ -33,9 +34,7 @@ class PrimateSimulation:
         if self.params.is_sequential_species:
             print("Species Type: Sequential Hermaphroditic")
         if self.params.ages_backward:
-            print("Species Type: Ages Backward (Merlin-style)")
-            
-        print(f"Calculated Carrying Capacity: {self.carrying_capacity:,d} individuals")
+            print("Species Type: Ages Backward (Merlin-style)")           
         
         self._create_initial_population(scenario_name)
 
@@ -515,6 +514,17 @@ class PrimateSimulation:
             
             # 6. Combine survivors and newborns
             self.population = final_survivors + newborns
+
+            if self.population:
+                total_needs = sum(p.get_caloric_need() for p in self.population)
+                avg_need = total_needs / len(self.population)
+                if avg_need > 0:
+                    self.carrying_capacity = math.floor(self.total_available_resources / avg_need)
+                else:
+                    self.carrying_capacity = 999999999
+            else:
+                 # Fallback if empty
+                 self.carrying_capacity = 999999999
            # self.carrying_capacity += death_counter // 10
             # 7. Apply Carrying Capacity Culling
             if len(self.population) > self.carrying_capacity:
@@ -801,8 +811,8 @@ class PrimateSimulation:
         plt.show()
 
 if __name__ == "__main__":
-    sim_params = SimulationParameters.from_json("demographics.json", "medieval_human")
-    sim_locale = Locale.from_json("locales.json", "pampas")
+    sim_params = SimulationParameters.from_json("demographics.json", "modern_human")
+    sim_locale = Locale.from_json("locales.json", "mount_everest")
     #simulation = PrimateSimulation(params=sim_params, locale=sim_locale, scenario_name="bounty_mutiny")
     simulation = PrimateSimulation(params=sim_params, locale=sim_locale) # For a random start
     simulation.run_simulation(num_years=190.0)
