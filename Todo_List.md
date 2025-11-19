@@ -3,6 +3,7 @@
 ⦁	Make Simulator Scalable for huge populations
 
 ⦁	Add disasters like famines
+⦁	Have Miscarriages and Stillbirths affect successful births.
 
 ⦁	Have caloric needs be determined by sex and age
 ⦁	Test how different marriage patterns affect population growth
