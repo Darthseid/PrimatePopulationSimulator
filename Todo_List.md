@@ -1,7 +1,5 @@
 **Future Features:**
 
-⦁	Make square km matter for population limits.
-
 ⦁	Make Simulator Scalable for huge populations
 
 ⦁	Add disasters like famines

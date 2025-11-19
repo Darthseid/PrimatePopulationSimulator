@@ -11,7 +11,7 @@ from PopulationObjects import SimulationParameters
 from PopulationObjects import calculate_age_based_fertility, calculate_carrying_capacity
 
 earth_year = 365.2422
-starting_population = 20000
+starting_population = 200
 
 class PrimateSimulation:
     """
@@ -423,9 +423,39 @@ class PrimateSimulation:
                         falling_steepness=self.params.fertility_falling_steepness, 
                         falling_midpoint_age=declining_midpoint
                     )
+                # --- NEW: MALE FERTILITY FACTOR & PATERNITY ---
+                male_fertility = 1.0
+                father = None
                 
+                # Identify the father (oldest male/partner in the union)
+                potential_fathers = []
+                if mother.union:
+                    for member in mother.union.members:
+                        if member is mother: continue
+                        if self.params.is_hermaphrodite or not member.is_female:
+                             potential_fathers.append(member)
+
+                if potential_fathers:
+                    # Sort by age descending (Oldest gets credit)
+                    potential_fathers.sort(key=lambda x: x.age_years, reverse=True)
+                    father = potential_fathers[0]
+                    
+                    male_age_days = father.age_years * earth_year
+                    
+                    if self.params.lifespan_days > 0:
+                        age_ratio = male_age_days / self.params.lifespan_days
+                        male_fertility = 1.0 / (1 + math.exp(10 * (age_ratio - 0.8))) # A man's fertility will be very high for most of his life, then it will go down a lot.
+                    else:
+                        male_fertility = 0.01 # Fallback for division by 0 errors.
+                        
+                elif self.params.marriage_type != 'asexual':
+                     male_fertility = 0.0 # No father present in a sexual union = no pregnancy
+                # --- END MALE FERTILITY ---
+
+                # Apply combined fertility
+                current_fertility_rate *= male_fertility
                 if contraceptive_use:
-                    current_fertility_rate *= 0.123 # More accurate
+                    current_fertility_rate *= 0.123 
                     
                 if random.random() <= max(0, current_fertility_rate):
                     mothers_who_gave_birth.add(mother)
@@ -445,6 +475,8 @@ class PrimateSimulation:
                             )
                             newborns.append(child)
                             mother.number_of_healthy_children += 1
+                            if father:
+                                father.number_of_healthy_children += 1
                             birth_counter += 1
                         else:
                             death_counter += 1
@@ -770,8 +802,8 @@ class PrimateSimulation:
 
 if __name__ == "__main__":
     sim_params = SimulationParameters.from_json("demographics.json", "medieval_human")
-    sim_locale = Locale.from_json("locales.json", "nauru")
+    sim_locale = Locale.from_json("locales.json", "pampas")
     #simulation = PrimateSimulation(params=sim_params, locale=sim_locale, scenario_name="bounty_mutiny")
     simulation = PrimateSimulation(params=sim_params, locale=sim_locale) # For a random start
-    simulation.run_simulation(num_years=30.0)
+    simulation.run_simulation(num_years=190.0)
 
