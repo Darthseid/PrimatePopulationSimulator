@@ -1,9 +1,0 @@
-rimatePopulationSimulator.py
-    # In the old age death check:
-    if died:
-        death_counter += 1
-        if primate.union:
-            primate.union.remove_member(primate)
-        continue
-
-    
