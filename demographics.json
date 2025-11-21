@@ -561,7 +561,7 @@
     "max_kids_per_primate": 15,
     "chance_of_multiple_birth": 0.75,
     "base_fertility_rate": 0.7077,
-    "sterile_chance": 0.01185,
+    "sterile_chance": 0.25,
     "sex_ratio_at_birth": 0.5,
     "infant_mortality_rate": 0.25,
     "maternal_mortality_rate": 0.02,
@@ -574,7 +574,7 @@
     "fertility_rising_steepness": 1.2,
     "fertility_falling_steepness": 0.5,
     "is_hermaphrodite": false,
-    "contraception_abortion_use_rate": 0.66
+    "contraception_abortion_use_rate": 0.56
   },
   "usagimimi": {
     "Species_Name": "Rabbitfolks",
@@ -586,7 +586,7 @@
     "max_kids_per_primate": 25,
     "chance_of_multiple_birth": 0.01,
     "base_fertility_rate": 0.85,
-    "sterile_chance": 0.03,
+    "sterile_chance": 0.11,
     "sex_ratio_at_birth": 0.5,
     "infant_mortality_rate": 0.3,
     "maternal_mortality_rate": 0.01,
@@ -611,7 +611,7 @@
     "max_kids_per_primate": 20,
     "chance_of_multiple_birth": 0.714285,
     "base_fertility_rate": 0.7,
-    "sterile_chance": 0.02,
+    "sterile_chance": 0.07,
     "sex_ratio_at_birth": 0.5,
     "infant_mortality_rate": 0.28,
     "maternal_mortality_rate": 0.02,
