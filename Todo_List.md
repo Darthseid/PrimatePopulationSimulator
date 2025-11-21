@@ -3,13 +3,13 @@
 ⦁	Make Simulator Scalable for huge populations
 
 ⦁	Add disasters like famines
-⦁	Have Miscarriages and Stillbirths affect successful births.
 
-⦁	Have caloric needs be determined by sex and age
 ⦁	Test how different marriage patterns affect population growth
 
-⦁	Add Uneven Hybrids
+⦁	Add Uneven Hybrids & Codominant Hybrids
 ⦁	Add Mixed Populations
+⦁	Make diet and food resources more detailed.
+⦁	Print species demographics at the end.
 
 **Bugs:**
 

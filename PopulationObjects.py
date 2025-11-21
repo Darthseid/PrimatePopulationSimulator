@@ -1,4 +1,5 @@
 import math
+from tkinter import SE
 import numpy as np
 import json
 from typing import Optional, Set, List
@@ -6,12 +7,14 @@ from typing import Optional, Set, List
 earth_year = 365.2422  # Constants
 
 class Primate:
-    def __init__(self, is_female: bool, age_days: int, is_initially_fertile: bool, params: 'SimulationParameters'):
+    def __init__(self, species_name, is_female: bool, age_days: int, is_initially_fertile: bool, params: 'SimulationParameters'):
+        self.species_name = species_name
         self.is_female: bool = is_female
         self.params = params   # Store params to know species rules (e.g., lifespan, ageing direction)
         self.age_days: int = age_days          
         self.is_fertile: bool = is_initially_fertile
         self.number_of_healthy_children: int = 0
+        self.next_breeding_day = 0
         self.union: Optional['Union'] = None  # Reference to the union this primate is in
 
     @property
@@ -44,10 +47,11 @@ class Primate:
     
 
     def __repr__(self) -> str:
+        species = self.species_name
         gender = "Female" if self.is_female else "Male"
         fertility = "Fertile" if self.is_fertile else "Sterile"
         coupled_status = "Coupled" if self.is_coupled else "Single"
-        return (f"<Primate | Gender: {gender}, Age: {self.age_years:.1f} yrs, "
+        return (f"<Primate | Gender: {gender}, Species: {species}, Age: {self.age_years:.1f} yrs, "
                 f"Status: {fertility}, {coupled_status}, Children: {self.number_of_healthy_children}>")
 
 class Locale:
@@ -187,7 +191,7 @@ class Union:
         if not self.members:  # If empty, mark as dissolved
             self.dissolved = True
 
-    def is_dissolved(self, params) -> bool:
+    def is_dissolved(self) -> bool:
         """Hard correctness rules."""
         if self.dissolved:
             return True
@@ -198,19 +202,15 @@ class Union:
         if self.marriage_type == "asexual":
             return len(self.members) != 1
 
-        return not self.has_females(params) or not self.has_males(params)
+        return not self.has_females(self) or not self.has_males(self)
 
-    def has_females(self, params) -> bool:
+    def has_females(self) -> bool:
         """Checks if the union has at least one female."""
-        if params.is_hermaphrodite:
-            return len(self.members) > 0
-        return any(m.is_female for m in self.members)
+        return any(m.is_female or m.params.is_hermaphrodite for m in self.members)
 
-    def has_males(self, params) -> bool:
+    def has_males(self) -> bool:
         """Checks if the union has at least one male."""
-        if params.is_hermaphrodite:
-            return len(self.members) > 0
-        return any(not m.is_female for m in self.members)
+        return any(not m.is_female or m.params.is_hermaphrodite for m in self.members)
 
     def is_viable_for_breeding(self, params) -> bool:
         """Check if union can produce children"""
@@ -234,9 +234,9 @@ class Union:
     # In Union class
     def __repr__(self):
         member_descriptions = ", ".join(
-        [f"{'F' if m.is_female else 'M'}({m.age_years:.0f} {m.number_of_healthy_children})" for m in self.members]
+        [f"{'F' if m.is_female else 'M'}{m.species_name}({m.age_years:.0f} {m.number_of_healthy_children})" for m in self.members]
         )
-        return f"<Union ({self.marriage_type} {len(self.members)}/{self.max_size}) | Members: [{member_descriptions}]>"
+        return f"<Union ({self.marriage_type}{len(self.members)}/{self.max_size}) | Members: [{member_descriptions}]>"
 
 
 def calculate_total_available_resources(params: SimulationParameters, locale: Locale) -> int:
