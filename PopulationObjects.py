@@ -1,4 +1,4 @@
-import math
+﻿import math
 import random
 from tkinter import SE
 import numpy as np
@@ -208,34 +208,9 @@ class Union:
     # In Union class
     def __repr__(self):
         member_descriptions = ", ".join(
-        [f"{'F ' if m.is_female else 'M '}{m.species_name}({m.age_years:.0f} {m.number_of_healthy_children})" for m in self.members]
+        [f"{'♀️ ' if m.is_female else '♂️ '}{m.species_name}({m.age_years:.0f} {m.number_of_healthy_children})" for m in self.members]
         )
         return f"<Union ({self.marriage_type}{len(self.members)}/{self.max_size}) | Members: [{member_descriptions}]>"
-
-
-def calculate_total_available_resources(params: SimulationParameters, locale: Locale) -> int:
-    """
-    Calculates the carrying capacity based on the species' diet and the locale's calorie availability.
-    """
-    total_available_calories = 0
-    diet = params.diet_type.lower()
-    
-    if diet == "omnivore":
-        total_available_calories = locale.carnivore_calories + locale.herbivore_calories
-    elif diet == "carnivore":
-        total_available_calories = locale.carnivore_calories
-    elif diet == "herbivore":
-        total_available_calories = locale.herbivore_calories
-    elif diet == "ruminant":
-        total_available_calories = locale.ruminant_calories + locale.herbivore_calories
-    elif diet == "autotroph":
-        total_available_calories = locale.water_availability_m3
-    else:
-        print(f"Warning: Unknown diet_type '{params.diet_type}'. They can eat everything!.")
-        total_available_calories = locale.carnivore_calories + locale.herbivore_calories + locale.ruminant_calories
-
-    return total_available_calories
-
 
 def convert_years_to_string(years_float: float) -> str:
     """

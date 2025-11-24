@@ -8,7 +8,7 @@ from typing import List, Optional
 
 from PopulationObjects import Primate, Locale, Union, convert_years_to_string, find_union_for_primate
 from PopulationObjects import SimulationParameters
-from PopulationObjects import calculate_age_based_fertility, calculate_total_available_resources
+from PopulationObjects import calculate_age_based_fertility
 from graphing import log_population_stats, display_population_pyramid, plot_population_history
 
 earth_year = 365.2422
@@ -29,14 +29,7 @@ class PrimateSimulation:
         self.unions: list[Union] = []
         self.history = []
 
-        self.cycle_days = min(params.interbirth_interval_days for params in self.species_params.values())
-
-       
-        self.total_available_resources = calculate_total_available_resources(
-            next(iter(self.species_params.values())), self.locale  # This is a placeholder for now. I need to recode resoures later. Currently, it just chooses the 1st species for this.
-        )
-        self.carrying_capacity = 0
-
+        self.cycle_days = min(params.interbirth_interval_days for params in self.species_params.values())       
         print(f"Locale: {self.locale.name} ({self.locale.biome_type})")
         print(f"Loaded species: {', '.join(species_names)}")
 
@@ -399,29 +392,52 @@ class PrimateSimulation:
             
             self.population = final_survivors + newborns # 6. Combine survivors and newborns
 
-            if self.population:
-                total_needs = sum(p.get_caloric_need() for p in self.population)
-                avg_need = total_needs / len(self.population)
-                if avg_need > 0:
-                    self.carrying_capacity = math.floor(self.total_available_resources / avg_need)
+            # --- 5. FEEDING PHASE ---
+            avail_meat = self.locale.carnivore_calories * self.cycle_days
+            avail_veg = self.locale.herbivore_calories * self.cycle_days
+            avail_grass = self.locale.ruminant_calories * self.cycle_days
+            avail_water = self.locale.water_availability_m3 * self.cycle_days
+            starvation_counter = 0
+            
+            final_population = []
+            
+            current_living = [p for p in self.population]
+            random.shuffle(current_living) 
+            
+            for p in current_living:
+                step_need = p.get_caloric_need() * self.cycle_days
+                diet = p.params.diet_type.lower()
+                fed = False       
+                if diet == "autotroph":
+                    if avail_water >= step_need:
+                        avail_water -= step_need; fed = True
+                elif diet == "carnivore":
+                    if avail_meat >= step_need:
+                        avail_meat -= step_need; fed = True
+                elif diet == "herbivore":
+                    if avail_veg >= step_need:
+                        avail_veg -= step_need; fed = True
+                elif diet == "ruminant":
+                    if avail_grass >= step_need:
+                        avail_grass -= step_need; fed = True
+                elif diet == "omnivore":
+                    if avail_meat >= step_need:
+                        avail_meat -= step_need; fed = True
+                    elif avail_veg >= step_need:
+                        avail_veg -= step_need; fed = True              
+                if fed:
+                    final_population.append(p)
                 else:
-                    self.carrying_capacity = 999999999
-            else:
-                 # Fallback if empty
-                 self.carrying_capacity = 999999999
-           # self.carrying_capacity += death_counter // 10
-            if len(self.population) > self.carrying_capacity:
-                num_to_cull = len(self.population) - self.carrying_capacity
-                death_counter += num_to_cull               
-                primates_to_cull = set(random.sample(self.population, num_to_cull))              
-                for primate in primates_to_cull:
-                    if primate.union: # Remove culled primates from their unions
-                        primate.union.remove_member(primate)              
-                self.population = [p for p in self.population if p not in primates_to_cull]           
-                self.unions = [union for union in self.unions if not union.is_dissolved()] # Clean up any dissolved unions
+                    starvation_counter += 1
+                    death_counter += 1
+                    if p.union: p.union.remove_member(p)
 
-            total_births += birth_counter
-            total_deaths += death_counter
+
+                total_births += birth_counter
+                total_deaths += death_counter
+            
+            self.population = final_population
+            self.unions = [union for union in self.unions if not union.is_dissolved()]
 
             if self.current_day >= total_days or cycle % cycle_interval == 0: # Always log last cycle
                 log_population_stats(self.current_day, self.population, self.unions, self.history, cycle, birth_counter, death_counter, eligible_female_counter)
@@ -495,8 +511,8 @@ class PrimateSimulation:
       
 if __name__ == "__main__":
     species_names = ["bounty_human", "satyr", "usagimimi"]
-    sim_locale = Locale.from_json("locales.json", "pampas")
+    sim_locale = Locale.from_json("locales.json", "nauru")
     #simulation = PrimateSimulation(params=sim_params, locale=sim_locale, scenario_name="bounty_mutiny")
     simulation = PrimateSimulation(species_names, sim_locale) # For a random start
-    simulation.run_simulation(num_years=80.0)
+    simulation.run_simulation(num_years=90.0)
 
