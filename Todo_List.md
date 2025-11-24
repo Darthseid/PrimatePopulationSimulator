@@ -9,7 +9,8 @@
 ⦁	Add Uneven Hybrids & Codominant Hybrids
 ⦁	Add Mixed Populations
 ⦁	Make diet and food resources more detailed.
-⦁	Print species demographics at the end.
+⦁	Have Polygamy/polygyny work well with Union changes.
+⦁	Dissolve solo unions.
 
 **Bugs:**
 

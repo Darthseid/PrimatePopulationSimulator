@@ -1,4 +1,5 @@
 import math
+import random
 from tkinter import SE
 import numpy as np
 import json
@@ -297,7 +298,7 @@ def find_union_for_primate(primate: Primate, eligible_pool: Set[Primate], marria
             if primate.is_hermaphrodite:
                 new_union = Union(marriage_type="asexual", max_size=1)
                 new_union.add_member(primate)
-                active_unions.append(new_union)
+                active_unions.append(real_union)
             return # Asexual non-hermaphrodites can't couple
 
         potential_partners = []
@@ -318,7 +319,6 @@ def find_union_for_primate(primate: Primate, eligible_pool: Set[Primate], marria
             new_union = Union(marriage_type="monogamy", max_size=2)
             new_union.add_member(primate)
             new_union.add_member(best_partner)
-            active_unions.append(new_union)
             return
 
         if marriage_type == "polygyny":
@@ -340,7 +340,6 @@ def find_union_for_primate(primate: Primate, eligible_pool: Set[Primate], marria
                     new_union = Union(marriage_type="polygyny", max_size=5)
                     new_union.add_member(best_partner) # Add the male first
                     new_union.add_member(primate)  # If no unions to join, form a new one with the best partner (who must be male)
-                    active_unions.append(new_union)
             return
 
         if marriage_type == "polyandry":
@@ -349,7 +348,6 @@ def find_union_for_primate(primate: Primate, eligible_pool: Set[Primate], marria
                     new_union = Union(marriage_type="polyandry", max_size=5)
                     new_union.add_member(primate)
                     new_union.add_member(best_partner)
-                    active_unions.append(new_union)
             else:  # Male is seeking            
                 for union in active_unions:
                     if union.marriage_type == "polyandry" and len(union.members) < union.max_size and union.has_females():
@@ -358,8 +356,7 @@ def find_union_for_primate(primate: Primate, eligible_pool: Set[Primate], marria
                 if best_partner.is_female:
                     new_union = Union(marriage_type="polyandry", max_size=5)
                     new_union.add_member(best_partner) # Add the female first
-                    new_union.add_member(primate)
-                    active_unions.append(new_union) # If no union to join, form a new one with the best partner (who must be female)
+                    new_union.add_member(primate) # If no union to join, form a new one with the best partner (who must be female)
             return
 
         if marriage_type == "polygamy":
@@ -370,7 +367,6 @@ def find_union_for_primate(primate: Primate, eligible_pool: Set[Primate], marria
             
             new_union = Union(marriage_type="polygamy", max_size=9)
             new_union.add_member(primate)
-            new_union.add_member(best_partner)
-            active_unions.append(new_union) # If none, form a new one
+            new_union.add_member(best_partner)  # If none, form a new one
             return
 

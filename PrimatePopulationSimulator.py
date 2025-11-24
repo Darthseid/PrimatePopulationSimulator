@@ -12,7 +12,7 @@ from PopulationObjects import calculate_age_based_fertility, calculate_total_ava
 from graphing import log_population_stats, display_population_pyramid, plot_population_history
 
 earth_year = 365.2422
-starting_population = 100
+starting_population = 300
 
 class PrimateSimulation:
     """
@@ -219,7 +219,7 @@ class PrimateSimulation:
             else:
                 breeding_population = (4 * fertile_male_count * fertile_female_count) / max(1, fertile_male_count + fertile_female_count)
                 sex_ratio = male_count / max(1, female_count)
-                marriage_chance = primate.params.coupling_rate * np.sqrt(sex_ratio) #This means women get paired off a lot when there are few of them, and rarely get paired off if they outnumber males a lot.
+                marriage_chance = primate.params.coupling_rate * np.sqrt(sex_ratio) * cycle_length_in_years #This means women get paired off a lot when there are few of them, and rarely get paired off if they outnumber males a lot.
 
             genetic_adjuster = min(1.0, breeding_population / 50.0) #This is the stand-in for incest. If the breeding population is low, mortality goes up.
 
@@ -234,12 +234,11 @@ class PrimateSimulation:
                    p.is_fertile and 
                    p.age_years * earth_year >= primate.params.puberty_age_days # Get all uncoupled, fertile individuals who are of age
             ]
-            if eligible_for_coupling:             
-               
+            if eligible_for_coupling:                          
                 partner_pool = {
                     p for p in eligible_for_coupling 
-                    if not (p.is_female and p.age_years * earth_year >= primate.params.menopause_age_days)
-                }  # Create a temporary pool of eligible partners, excluding post-menopausal females
+                    if not (p.is_female and p.age_years * earth_year >= primate.params.menopause_age_days) #This excludes post-menopausal females.
+                }
 
                 for primate in eligible_for_coupling:
                     if primate.union is not None:
@@ -251,7 +250,11 @@ class PrimateSimulation:
                     if not (random.random() < marriage_chance):
                         continue
                         
-                    find_union_for_primate(primate, partner_pool, "monogamy", self.unions)
+                    sample_size = min(len(partner_pool), 20) #Limit sample size for performance
+                    if sample_size > 0:
+                            local_pool = random.sample(partner_pool, sample_size)
+                            sample_unions = random.sample(self.unions, min(len(self.unions), 20))
+                    find_union_for_primate(primate, local_pool, "monogamy", sample_unions)
 
             for mother in new_population:              
                 is_eligible = (
@@ -386,9 +389,7 @@ class PrimateSimulation:
                             age_days=4748, #Age 13 years
                             is_initially_fertile=random.random() > primate.params.sterile_chance 
                         )
-                        # Add respawned male to newborns or population here
-                        # newborns.append(respawned_male)
-                    
+                        newborns.append(respawned_male)                   
                     if primate.union:
                         primate.union.remove_member(primate) 
                 else:
@@ -441,9 +442,8 @@ class PrimateSimulation:
                 for member in union.members[:]:
                     if member not in alive_set:
                         union.remove_member(member)
-
-            # Remove dissolved/empty unions
-            self.unions = [u for u in self.unions if not u.is_dissolved()]
+           
+            self.unions = [u for u in self.unions if not u.is_dissolved()] # Remove dissolved/empty unions
                 
             cycle += 1
 
@@ -474,10 +474,17 @@ class PrimateSimulation:
         print(f"Crude Death Rate (per 1,000/year, based on avg pop): {calculated_death_rate:.2f}")
         print(f"Rate of Natural Increase: {calculated_birth_rate - calculated_death_rate:.2f} per 1,000/year")
         print(f"Population Change: {(len(self.population) / initial_pop_size * 100):.2f}%" if initial_pop_size > 0 else "N/A")
-        if len(self.unions) > 40:
-            print(self.unions[:40])
+        coupled_primates = [p for p in self.population if p.union is not None]
+        sample_size = min(len(coupled_primates), 40)
+        
+        print(f"Unions of Random Sample ({sample_size} coupled individuals):")
+        if sample_size > 0:
+            sampled_primates = random.sample(coupled_primates, sample_size)
+            # Use a set comprehension to extract unique unions from the sampled primates
+            sampled_unions = list({p.union for p in sampled_primates})
+            print(sampled_unions)
         else:
-            print(self.unions)
+            print("[] (No coupled individuals found)")
                
         end_time = time.time()
         runtime = end_time - start_time
@@ -487,9 +494,9 @@ class PrimateSimulation:
         plot_population_history(self.history, species_names, self.current_day)
       
 if __name__ == "__main__":
-    species_names = ["orc", "medieval_human", "elf"]
+    species_names = ["bounty_human", "satyr", "usagimimi"]
     sim_locale = Locale.from_json("locales.json", "pampas")
     #simulation = PrimateSimulation(params=sim_params, locale=sim_locale, scenario_name="bounty_mutiny")
     simulation = PrimateSimulation(species_names, sim_locale) # For a random start
-    simulation.run_simulation(num_years=50.0)
+    simulation.run_simulation(num_years=80.0)
 
