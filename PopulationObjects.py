@@ -30,7 +30,6 @@ class Primate:
         if self.is_female:
             need *= 0.9
             
-        # We use age_years * earth_year to get biological age in days
         biological_age_days = self.age_years * earth_year
         if biological_age_days < self.params.puberty_age_days:
             need *= 0.5
@@ -102,13 +101,11 @@ class SimulationParameters:
             raise ValueError(f"Invalid JSON format in file: {json_path}")
 
     def __init__(self, **params):
-        # Core Lifecycle
         self.species_name = params["Species_Name"]
         self.puberty_age_days = params["puberty_age_days"]
         self.menopause_age_days = params["menopause_age_days"]
         self.lifespan_days = params["lifespan_days"] 
         
-        # Reproduction
         self.coupling_rate = params["coupling_rate"] #This represents the chance of a primate being coupled with a mate per cycle.
         self.gestation_days = params["gestation_days"]
         self.interbirth_interval_days = params["interbirth_interval_days"]
@@ -120,33 +117,27 @@ class SimulationParameters:
         self.sex_ratio_at_birth = params["sex_ratio_at_birth"]
         self.contraception_abortion_use_rate = params["contraception_abortion_use_rate"]
         
-        # Gender Types
         self.is_hermaphrodite = params.get("is_hermaphrodite", False) # Use .get() for optional params
         self.is_sequential_species = params.get("is_sequential_species", False)
         self.ages_backward = params.get("ages_backward", False) # --- ADDED ---
         
-        # Mortality
         self.infant_mortality_rate = params["infant_mortality_rate"]
         self.maternal_mortality_rate = params["maternal_mortality_rate"]
         self.adult_mortality_rate = params["adult_mortality_rate"]
 
-        # Diet & Environment
         self.calories_needed_per_primate = params["calories_needed_per_primate"] # Calories needed *per day*
         self.diet_type = params.get("diet_type", "omnivore") # Get diet type, default to omnivore
         
-        # Genetics
         self.genetic_diversity = params.get("initial_genetic_diversity", 1.0)
         
-        # Fertility Curve (Dynamic)
-        self.fertility_rising_steepness = params["fertility_rising_steepness"]
+       
+        self.fertility_rising_steepness = params["fertility_rising_steepness"]  # Fertility Curve (Dynamic)
         self.fertility_falling_steepness = params["fertility_falling_steepness"]
 
-        # --- Calculated Parameters ---
         self.fertile_days = self.menopause_age_days - self.puberty_age_days #A female primate's reproductive lifespan.
         self.effective_gestation_days = self.gestation_days + self.interbirth_interval_days
-        
-        # Calculate cycles per life and per-cycle fertility rate
-        if self.effective_gestation_days > 0:
+              
+        if self.effective_gestation_days > 0: # Calculate cycles per life and per-cycle fertility rate
             self.cycles_per_reproductive_life = self.fertile_days / self.effective_gestation_days #How many birthing cycles a primate potentially has.
             cycle_length_in_years = self.effective_gestation_days / earth_year
             self.per_cycle_fertility_rate = self.base_fertility_rate * cycle_length_in_years
@@ -154,17 +145,11 @@ class SimulationParameters:
             self.cycles_per_reproductive_life = 0
             self.per_cycle_fertility_rate = 0
 
-        # Calculate final effective fertility rate per cycle, capping at 99.999%
-        self.effective_per_cycle_fertility_rate = min(
-            self.per_cycle_fertility_rate * (1 - self.miscarriage_stillborn_rate), 0.99999
-        )
+        self.effective_per_cycle_fertility_rate = min(self.per_cycle_fertility_rate * (1 - self.miscarriage_stillborn_rate), 0.99999)      
         
-        # Calculate per-cycle mortality from annual mortality rate
         if self.effective_gestation_days > 0:
-            cycle_length_in_years = self.effective_gestation_days / earth_year
-            self.per_cycle_adult_mortality_rate = (
-                1 - (1 - self.adult_mortality_rate) ** cycle_length_in_years
-            )
+            cycle_length_in_years = self.effective_gestation_days / earth_year # Calculate per-cycle mortality from annual mortality rate
+            self.per_cycle_adult_mortality_rate = self.adult_mortality_rate * cycle_length_in_years
         else:
             self.per_cycle_adult_mortality_rate = 0
 
@@ -183,7 +168,6 @@ class Union:
             self.members.append(primate)
             primate.union = self  # Set back-reference to union
 
-    # In Union class
     def remove_member(self, primate):
         if primate in self.members:
             self.members.remove(primate)

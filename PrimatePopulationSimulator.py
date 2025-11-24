@@ -1,6 +1,7 @@
 ﻿import random
 import math
 import json
+from tkinter import SEL
 import numpy as np
 import time
 from typing import List, Optional
@@ -114,11 +115,12 @@ class PrimateSimulation:
         total_days = num_years * earth_year
         cycle = 1
         cycle_days_passed = 0
+        cycle_length_in_years = self.cycle_days / earth_year
 
         if self.cycle_days <= 0: # Safety check
             cycle_interval = 1
         else:
-            cycle_interval = max(1, int(total_days / (5 * self.cycle_days)))
+            cycle_interval = max(1, int(total_days / (10 * self.cycle_days)))
 
         while self.current_day < total_days:
 
@@ -370,7 +372,8 @@ class PrimateSimulation:
                     died = True
                 else: # Use else here to group the adult mortality check
                     # Calculate adjusted mortality for this specific primate
-                    adjusted_adult_mortality = primate.params.adult_mortality_rate * (1.0 + (1.0 - genetic_adjuster)) ** 1.59
+                    adult_mortality = primate.params.adult_mortality_rate * cycle_length_in_years
+                    adjusted_adult_mortality = adult_mortality * (1.0 + (1.0 - genetic_adjuster)) ** 1.59
                     if primate.age_years > 0.5 and random.random() < adjusted_adult_mortality:
                         died = True   
                 
@@ -419,7 +422,7 @@ class PrimateSimulation:
             total_births += birth_counter
             total_deaths += death_counter
 
-            if self.current_day >= total_days: # Always log last cycle
+            if self.current_day >= total_days or cycle % cycle_interval == 0: # Always log last cycle
                 log_population_stats(self.current_day, self.population, self.unions, self.history, cycle, birth_counter, death_counter, eligible_female_counter)
                 cycle_days_passed = 0          
             if not primate.params.is_hermaphrodite and not primate.params.is_sequential_species:  # 9. Check for extinction
@@ -484,9 +487,9 @@ class PrimateSimulation:
         plot_population_history(self.history, species_names, self.current_day)
       
 if __name__ == "__main__":
-    species_names = ["modern_human", "orc", "elf"]
-    sim_locale = Locale.from_json("locales.json", "nauru")
+    species_names = ["orc", "medieval_human", "elf"]
+    sim_locale = Locale.from_json("locales.json", "pampas")
     #simulation = PrimateSimulation(params=sim_params, locale=sim_locale, scenario_name="bounty_mutiny")
     simulation = PrimateSimulation(species_names, sim_locale) # For a random start
-    simulation.run_simulation(num_years=100.0)
+    simulation.run_simulation(num_years=50.0)
 
