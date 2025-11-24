@@ -1,4 +1,6 @@
-import math
+﻿import math
+import random
+from tkinter import SE
 import numpy as np
 import json
 from typing import Optional, Set, List
@@ -6,12 +8,14 @@ from typing import Optional, Set, List
 earth_year = 365.2422  # Constants
 
 class Primate:
-    def __init__(self, is_female: bool, age_days: int, is_initially_fertile: bool, params: 'SimulationParameters'):
+    def __init__(self, species_name, is_female: bool, age_days: int, is_initially_fertile: bool, params: 'SimulationParameters'):
+        self.species_name = species_name
         self.is_female: bool = is_female
         self.params = params   # Store params to know species rules (e.g., lifespan, ageing direction)
         self.age_days: int = age_days          
         self.is_fertile: bool = is_initially_fertile
         self.number_of_healthy_children: int = 0
+        self.next_breeding_day = 0
         self.union: Optional['Union'] = None  # Reference to the union this primate is in
 
     @property
@@ -27,7 +31,6 @@ class Primate:
         if self.is_female:
             need *= 0.9
             
-        # We use age_years * earth_year to get biological age in days
         biological_age_days = self.age_years * earth_year
         if biological_age_days < self.params.puberty_age_days:
             need *= 0.5
@@ -44,10 +47,11 @@ class Primate:
     
 
     def __repr__(self) -> str:
+        species = self.species_name
         gender = "Female" if self.is_female else "Male"
         fertility = "Fertile" if self.is_fertile else "Sterile"
         coupled_status = "Coupled" if self.is_coupled else "Single"
-        return (f"<Primate | Gender: {gender}, Age: {self.age_years:.1f} yrs, "
+        return (f"<Primate | Gender: {gender}, Species: {species}, Age: {self.age_years:.1f} yrs, "
                 f"Status: {fertility}, {coupled_status}, Children: {self.number_of_healthy_children}>")
 
 class Locale:
@@ -98,13 +102,11 @@ class SimulationParameters:
             raise ValueError(f"Invalid JSON format in file: {json_path}")
 
     def __init__(self, **params):
-        # Core Lifecycle
         self.species_name = params["Species_Name"]
         self.puberty_age_days = params["puberty_age_days"]
         self.menopause_age_days = params["menopause_age_days"]
         self.lifespan_days = params["lifespan_days"] 
         
-        # Reproduction
         self.coupling_rate = params["coupling_rate"] #This represents the chance of a primate being coupled with a mate per cycle.
         self.gestation_days = params["gestation_days"]
         self.interbirth_interval_days = params["interbirth_interval_days"]
@@ -116,33 +118,27 @@ class SimulationParameters:
         self.sex_ratio_at_birth = params["sex_ratio_at_birth"]
         self.contraception_abortion_use_rate = params["contraception_abortion_use_rate"]
         
-        # Gender Types
         self.is_hermaphrodite = params.get("is_hermaphrodite", False) # Use .get() for optional params
         self.is_sequential_species = params.get("is_sequential_species", False)
         self.ages_backward = params.get("ages_backward", False) # --- ADDED ---
         
-        # Mortality
         self.infant_mortality_rate = params["infant_mortality_rate"]
         self.maternal_mortality_rate = params["maternal_mortality_rate"]
         self.adult_mortality_rate = params["adult_mortality_rate"]
 
-        # Diet & Environment
         self.calories_needed_per_primate = params["calories_needed_per_primate"] # Calories needed *per day*
         self.diet_type = params.get("diet_type", "omnivore") # Get diet type, default to omnivore
         
-        # Genetics
         self.genetic_diversity = params.get("initial_genetic_diversity", 1.0)
         
-        # Fertility Curve (Dynamic)
-        self.fertility_rising_steepness = params["fertility_rising_steepness"]
+       
+        self.fertility_rising_steepness = params["fertility_rising_steepness"]  # Fertility Curve (Dynamic)
         self.fertility_falling_steepness = params["fertility_falling_steepness"]
 
-        # --- Calculated Parameters ---
         self.fertile_days = self.menopause_age_days - self.puberty_age_days #A female primate's reproductive lifespan.
         self.effective_gestation_days = self.gestation_days + self.interbirth_interval_days
-        
-        # Calculate cycles per life and per-cycle fertility rate
-        if self.effective_gestation_days > 0:
+              
+        if self.effective_gestation_days > 0: # Calculate cycles per life and per-cycle fertility rate
             self.cycles_per_reproductive_life = self.fertile_days / self.effective_gestation_days #How many birthing cycles a primate potentially has.
             cycle_length_in_years = self.effective_gestation_days / earth_year
             self.per_cycle_fertility_rate = self.base_fertility_rate * cycle_length_in_years
@@ -150,17 +146,11 @@ class SimulationParameters:
             self.cycles_per_reproductive_life = 0
             self.per_cycle_fertility_rate = 0
 
-        # Calculate final effective fertility rate per cycle, capping at 99.999%
-        self.effective_per_cycle_fertility_rate = min(
-            self.per_cycle_fertility_rate * (1 - self.miscarriage_stillborn_rate), 0.99999
-        )
+        self.effective_per_cycle_fertility_rate = min(self.per_cycle_fertility_rate * (1 - self.miscarriage_stillborn_rate), 0.99999)      
         
-        # Calculate per-cycle mortality from annual mortality rate
         if self.effective_gestation_days > 0:
-            cycle_length_in_years = self.effective_gestation_days / earth_year
-            self.per_cycle_adult_mortality_rate = (
-                1 - (1 - self.adult_mortality_rate) ** cycle_length_in_years
-            )
+            cycle_length_in_years = self.effective_gestation_days / earth_year # Calculate per-cycle mortality from annual mortality rate
+            self.per_cycle_adult_mortality_rate = self.adult_mortality_rate * cycle_length_in_years
         else:
             self.per_cycle_adult_mortality_rate = 0
 
@@ -179,7 +169,6 @@ class Union:
             self.members.append(primate)
             primate.union = self  # Set back-reference to union
 
-    # In Union class
     def remove_member(self, primate):
         if primate in self.members:
             self.members.remove(primate)
@@ -187,7 +176,7 @@ class Union:
         if not self.members:  # If empty, mark as dissolved
             self.dissolved = True
 
-    def is_dissolved(self, params) -> bool:
+    def is_dissolved(self) -> bool:
         """Hard correctness rules."""
         if self.dissolved:
             return True
@@ -198,70 +187,30 @@ class Union:
         if self.marriage_type == "asexual":
             return len(self.members) != 1
 
-        return not self.has_females(params) or not self.has_males(params)
+        return not self.has_females() or not self.has_males()
 
-    def has_females(self, params) -> bool:
+    def has_females(self) -> bool:
         """Checks if the union has at least one female."""
-        if params.is_hermaphrodite:
-            return len(self.members) > 0
-        return any(m.is_female for m in self.members)
+        return any(m.is_female or m.params.is_hermaphrodite for m in self.members)
 
-    def has_males(self, params) -> bool:
+    def has_males(self) -> bool:
         """Checks if the union has at least one male."""
-        if params.is_hermaphrodite:
-            return len(self.members) > 0
-        return any(not m.is_female for m in self.members)
+        return any(not m.is_female or m.params.is_hermaphrodite for m in self.members)
 
-    def is_viable_for_breeding(self, params) -> bool:
+    def is_viable_for_breeding(self) -> bool:
         """Check if union can produce children"""
         if self.marriage_type == "asexual":
-            return len(self.members) > 0
-            
+            return len(self.members) > 0           
         if len(self.members) < 2:
-            return False
-            
-        if params.is_hermaphrodite:
-            return len(self.members) >= 2 # Need at least two hermaphrodites
-        
-        # --- BUG FIX ---
-        # Correctly call the methods with (params)
-        if not (self.has_females(params) and self.has_males(params)):
-            return False
-        # --- END FIX ---
-            
-        return True
+            return False            
+        return self.has_females() and self.has_males()
 
     # In Union class
     def __repr__(self):
         member_descriptions = ", ".join(
-        [f"{'F' if m.is_female else 'M'}({m.age_years:.0f} {m.number_of_healthy_children})" for m in self.members]
+        [f"{'♀️ ' if m.is_female else '♂️ '}{m.species_name}( Age: {m.age_years:.0f} Kids: {m.number_of_healthy_children})" for m in self.members]
         )
-        return f"<Union ({self.marriage_type} {len(self.members)}/{self.max_size}) | Members: [{member_descriptions}]>"
-
-
-def calculate_total_available_resources(params: SimulationParameters, locale: Locale) -> int:
-    """
-    Calculates the carrying capacity based on the species' diet and the locale's calorie availability.
-    """
-    total_available_calories = 0
-    diet = params.diet_type.lower()
-    
-    if diet == "omnivore":
-        total_available_calories = locale.carnivore_calories + locale.herbivore_calories
-    elif diet == "carnivore":
-        total_available_calories = locale.carnivore_calories
-    elif diet == "herbivore":
-        total_available_calories = locale.herbivore_calories
-    elif diet == "ruminant":
-        total_available_calories = locale.ruminant_calories + locale.herbivore_calories
-    elif diet == "autotroph":
-        total_available_calories = locale.water_availability_m3
-    else:
-        print(f"Warning: Unknown diet_type '{params.diet_type}'. They can eat everything!.")
-        total_available_calories = locale.carnivore_calories + locale.herbivore_calories + locale.ruminant_calories
-
-    return total_available_calories
-
+        return f"<Union ({self.marriage_type}{len(self.members)}/{self.max_size}) | Members: [{member_descriptions}]>\n"
 
 def convert_years_to_string(years_float: float) -> str:
     """
@@ -314,4 +263,85 @@ def calculate_age_based_fertility(
     
     # The final fertility is the product of the peak rate and both logistic curves
     return max_fertility * growth_logistic * decline_logistic
+
+def find_union_for_primate(primate: Primate, eligible_pool: Set[Primate], marriage_type, active_unions: List[Union]):
+        """
+        This is the new "Coupling" function.
+        It finds a partner or existing union for the given primate.
+        """
+        if marriage_type == "asexual":
+            if primate.is_hermaphrodite:
+                new_union = Union(marriage_type="asexual", max_size=1)
+                new_union.add_member(primate)
+                active_unions.append(real_union)
+            return # Asexual non-hermaphrodites can't couple
+
+        potential_partners = []
+        for partner in eligible_pool:
+            if partner is primate or partner.union is not None:
+                continue          
+            if (primate.params.is_hermaphrodite and partner.params.is_hermaphrodite) or \
+               (primate.is_female != partner.is_female):
+                potential_partners.append(partner) # Find opposite sex (or any other hermaphrodite)
+
+        if not potential_partners:
+            return # No partners available
+        
+        potential_partners.sort(key=lambda p: abs(p.age_days - primate.age_days))
+        best_partner = potential_partners[0] # Sort partners by closest age
+
+        if marriage_type == "monogamy":
+            new_union = Union(marriage_type="monogamy", max_size=2)
+            new_union.add_member(primate)
+            new_union.add_member(best_partner)
+            return
+
+        if marriage_type == "polygyny":
+            if not primate.is_female: # Male is seeking
+                # Males form new unions
+                new_union = Union(marriage_type="polygyny", max_size=5)
+                new_union.add_member(primate)
+                new_union.add_member(best_partner) # Add one female
+                active_unions.append(new_union)
+            else: # Female is seeking              
+                for union in active_unions:
+                    if union.marriage_type == "polygyny" and \
+                       len(union.members) < union.max_size and \
+                       union.has_males(): # Ensure union has a male
+                        union.add_member(primate)
+                        return # Try to join an existing union that has a male and space
+               
+                if not best_partner.is_female:
+                    new_union = Union(marriage_type="polygyny", max_size=5)
+                    new_union.add_member(best_partner) # Add the male first
+                    new_union.add_member(primate)  # If no unions to join, form a new one with the best partner (who must be male)
+            return
+
+        if marriage_type == "polyandry":
+            if primate.is_female:  # Female is seeking
+                if not best_partner.is_female:
+                    new_union = Union(marriage_type="polyandry", max_size=5)
+                    new_union.add_member(primate)
+                    new_union.add_member(best_partner)
+            else:  # Male is seeking            
+                for union in active_unions:
+                    if union.marriage_type == "polyandry" and len(union.members) < union.max_size and union.has_females():
+                        union.add_member(primate)
+                        return    # Try to join an existing union with a female and space         
+                if best_partner.is_female:
+                    new_union = Union(marriage_type="polyandry", max_size=5)
+                    new_union.add_member(best_partner) # Add the female first
+                    new_union.add_member(primate) # If no union to join, form a new one with the best partner (who must be female)
+            return
+
+        if marriage_type == "polygamy":
+            for union in active_unions:
+                if union.marriage_type == "polygamy" and len(union.members) < union.max_size:
+                    union.add_member(primate)
+                    return
+            
+            new_union = Union(marriage_type="polygamy", max_size=9)
+            new_union.add_member(primate)
+            new_union.add_member(best_partner)  # If none, form a new one
+            return
 
