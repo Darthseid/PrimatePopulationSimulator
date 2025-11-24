@@ -4,7 +4,7 @@ import math
 
 earth_year = 365.2422
 
-def log_population_stats(current_day, population, unions, carrying_capacity, history, cycle, births, deaths, eligible):
+def log_population_stats(current_day, population, unions, history, cycle, births, deaths, eligible):
         total_pop = len(population)
         
         median_age_years = 0.0
@@ -32,11 +32,8 @@ def log_population_stats(current_day, population, unions, carrying_capacity, his
         species_counts = {}
         for p in population:
             name = p.params.species_name
-            species_counts[name] = species_counts.get(name, 0) + 1
-        
-            species_str = ", ".join([f"{name}: {count:,d}" for name, count in species_counts.items()])
-    
-        print(f"Day {current_day}: Pop {len(population):,d} | Unions {len(unions)} | Cap {carrying_capacity:,d}")
+            species_counts[name] = species_counts.get(name, 0) + 1     
+            species_str = ", ".join([f"{name}: {count:,d}" for name, count in species_counts.items()])   
         if species_str:
             print(f"  - Species: {species_str}")
 

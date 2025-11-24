@@ -105,7 +105,7 @@ class PrimateSimulation:
     def run_simulation(self, num_years: float):
         start_time = time.time()  # Add this at the start of run_simulation
         print("--- Simulation Starting ---")
-        log_population_stats(self.current_day, self.population, self.unions, self.carrying_capacity, self.history, 0, 0, 0, 0)
+        log_population_stats(self.current_day, self.population, self.unions, self.history, 0, 0, 0, 0)
 
         total_births = 0
         total_deaths = 0
@@ -113,8 +113,6 @@ class PrimateSimulation:
 
         total_days = num_years * earth_year
         cycle = 1
-        while self.current_day < total_days:
-            self.current_day += self.cycle_days
         cycle_days_passed = 0
 
         if self.cycle_days <= 0: # Safety check
