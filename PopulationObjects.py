@@ -202,7 +202,7 @@ class Union:
         if self.marriage_type == "asexual":
             return len(self.members) != 1
 
-        return not self.has_females(self) or not self.has_males(self)
+        return not self.has_females() or not self.has_males()
 
     def has_females(self) -> bool:
         """Checks if the union has at least one female."""
@@ -212,29 +212,18 @@ class Union:
         """Checks if the union has at least one male."""
         return any(not m.is_female or m.params.is_hermaphrodite for m in self.members)
 
-    def is_viable_for_breeding(self, params) -> bool:
+    def is_viable_for_breeding(self) -> bool:
         """Check if union can produce children"""
         if self.marriage_type == "asexual":
-            return len(self.members) > 0
-            
+            return len(self.members) > 0           
         if len(self.members) < 2:
-            return False
-            
-        if params.is_hermaphrodite:
-            return len(self.members) >= 2 # Need at least two hermaphrodites
-        
-        # --- BUG FIX ---
-        # Correctly call the methods with (params)
-        if not (self.has_females(params) and self.has_males(params)):
-            return False
-        # --- END FIX ---
-            
-        return True
+            return False            
+        return self.has_females() and self.has_males()
 
     # In Union class
     def __repr__(self):
         member_descriptions = ", ".join(
-        [f"{'F' if m.is_female else 'M'}{m.species_name}({m.age_years:.0f} {m.number_of_healthy_children})" for m in self.members]
+        [f"{'F ' if m.is_female else 'M '}{m.species_name}({m.age_years:.0f} {m.number_of_healthy_children})" for m in self.members]
         )
         return f"<Union ({self.marriage_type}{len(self.members)}/{self.max_size}) | Members: [{member_descriptions}]>"
 
@@ -331,7 +320,7 @@ def find_union_for_primate(primate: Primate, eligible_pool: Set[Primate], marria
         for partner in eligible_pool:
             if partner is primate or partner.union is not None:
                 continue          
-            if (primate.is_hermaphrodite and partner.params.is_hermaphrodite) or \
+            if (primate.params.is_hermaphrodite and partner.params.is_hermaphrodite) or \
                (primate.is_female != partner.is_female):
                 potential_partners.append(partner) # Find opposite sex (or any other hermaphrodite)
 

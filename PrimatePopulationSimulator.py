@@ -138,7 +138,7 @@ class PrimateSimulation:
             fertile_female_count = 0
 
             for primate in self.population:
-                if primate.ages_backward:
+                if primate.params.ages_backward:
                     primate.age_days -= self.cycle_days # Age decreases
                 else:
                     primate.age_days += self.cycle_days # Age increases
@@ -191,7 +191,7 @@ class PrimateSimulation:
                 
                 if primate.is_female:
                     female_count += 1
-                    if primate.is_fertile and primate.puberty_age_days <= primate.age_years * earth_year < primate.params.menopause_age_days:
+                    if primate.is_fertile and primate.params.puberty_age_days <= primate.age_years * earth_year < primate.params.menopause_age_days:
                         fertile_female_count += 1
                 else:
                     male_count += 1
@@ -200,7 +200,7 @@ class PrimateSimulation:
             
             surviving_unions = []
             for union in self.unions:
-                if union.is_dissolved(union.params):
+                if union.is_dissolved():
                     for member in union.members:
                         member.union = None # Uncouple all surviving members
                 else:
@@ -230,20 +230,20 @@ class PrimateSimulation:
                 p for p in new_population 
                 if p.union is None and 
                    p.is_fertile and 
-                   p.age_years * earth_year >= primate.puberty_age_days # Get all uncoupled, fertile individuals who are of age
+                   p.age_years * earth_year >= primate.params.puberty_age_days # Get all uncoupled, fertile individuals who are of age
             ]
             if eligible_for_coupling:             
                
                 partner_pool = {
                     p for p in eligible_for_coupling 
-                    if not (p.is_female and p.age_years * earth_year >= primate.menopause_age_days)
+                    if not (p.is_female and p.age_years * earth_year >= primate.params.menopause_age_days)
                 }  # Create a temporary pool of eligible partners, excluding post-menopausal females
 
                 for primate in eligible_for_coupling:
                     if primate.union is not None:
                         continue # Already coupled in this loop
                                         
-                    if primate.is_female and primate.age_years * earth_year >= primate.menopause_age_days:
+                    if primate.is_female and primate.age_years * earth_year >= primate.params.menopause_age_days:
                         continue # Skip if post-menopausal female
                         
                     if not (random.random() < marriage_chance):
@@ -257,7 +257,7 @@ class PrimateSimulation:
                     mother.is_fertile and
                     mother.next_breeding_day <= self.current_day and
                     mother.union is not None and  # Check if in a union
-                    mother.union.is_viable_for_breeding(mother.params) and  # Check if union can breed
+                    mother.union.is_viable_for_breeding() and  # Check if union can breed
                     mother.params.puberty_age_days <= mother.age_years * earth_year < mother.params.menopause_age_days and
                     mother.number_of_healthy_children < mother.params.max_kids_per_primate
                 )
@@ -419,15 +419,8 @@ class PrimateSimulation:
             total_births += birth_counter
             total_deaths += death_counter
 
-            log_check = False
-            if cycle_interval > 0:
-                if cycle_days_passed >= primate.effective_gestation_days * cycle_interval:
-                    log_check = True
-            elif cycle % 10 == 0: # Fallback log for very short cycles
-                 log_check = True
-
-            if log_check or (self.current_day >= total_days): # Always log last cycle
-                log_population_stats(self.current_day, self.population, self.unions, self.carrying_capacity, self.history, cycle, birth_counter, death_counter, eligible_female_counter)
+            if self.current_day >= total_days: # Always log last cycle
+                log_population_stats(self.current_day, self.population, self.unions, self.history, cycle, birth_counter, death_counter, eligible_female_counter)
                 cycle_days_passed = 0          
             if not primate.params.is_hermaphrodite and not primate.params.is_sequential_species:  # 9. Check for extinction
                 if not any(p.is_female for p in self.population) or not any(not p.is_female for p in self.population):

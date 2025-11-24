@@ -24,9 +24,9 @@ def log_population_stats(current_day, population, unions, history, cycle, births
         print(f"  - Sex Ratio (M/F): {sex_ratio:.2f}")
         
         if cycle != 0 and cycle != "Final":
-            print(f"Births This Cycle: {births_this_cycle:,d}")
-            print(f"Deaths This Cycle: {deaths_this_cycle:,d}")
-            print(f"Potential Mothers: {potential_mother_counter:,d}")
+            print(f"Births This Cycle: {births:,d}")
+            print(f"Deaths This Cycle: {deaths:,d}")
+            print(f"Potential Mothers: {eligible:,d}")
             print(f"Breeding Unions: {len(unions):,d}")
 
         species_counts = {}
