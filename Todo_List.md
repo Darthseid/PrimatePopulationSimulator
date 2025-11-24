@@ -13,4 +13,4 @@
 
 **Bugs:**
 
-Total Fertility Rate is often inaccurate.
+⦁	

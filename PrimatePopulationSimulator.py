@@ -2,13 +2,13 @@
 import math
 import json
 import numpy as np
-import matplotlib.pyplot as plt
 import time
 from typing import List, Optional
 
-from PopulationObjects import Primate, Locale, Union, convert_years_to_string
+from PopulationObjects import Primate, Locale, Union, convert_years_to_string, find_union_for_primate
 from PopulationObjects import SimulationParameters
 from PopulationObjects import calculate_age_based_fertility, calculate_total_available_resources
+from graphing import log_population_stats, display_population_pyramid, plot_population_history
 
 earth_year = 365.2422
 starting_population = 100
@@ -39,9 +39,9 @@ class PrimateSimulation:
         print(f"Locale: {self.locale.name} ({self.locale.biome_type})")
         print(f"Loaded species: {', '.join(species_names)}")
 
-        self._create_initial_population(scenario_name)
+        self.create_initial_population(scenario_name)
 
-    def _create_initial_population(self, scenario_name: str = None):
+    def create_initial_population(self, scenario_name: str = None):
         """
         Creates the initial population, either from a scenario file or randomly.
         """
@@ -56,9 +56,11 @@ class PrimateSimulation:
                 
                 scenario_data = scenarios[scenario_name]["population"]
                 for primate_data in scenario_data:
+                    params = random.choice(self.species_profiles)
                     is_female = primate_data["is_female"]
                     
                     primate = Primate(
+                        species_name=primate_data["species_name"],
                         is_female=is_female,
                         age_days=primate_data["age_days"], # Primate __init__ will handle conversion
                         is_initially_fertile=primate_data["is_initially_fertile"],
@@ -73,12 +75,11 @@ class PrimateSimulation:
             except (json.JSONDecodeError, KeyError, ValueError) as e:
                 print(f"Error reading scenarios.json: {e}. Falling back to random population.")
         
-        self._create_random_population()
+        self.create_random_population()
 
-    def _create_random_population(self):
+    def create_random_population(self):
         print("Creating a randomized initial population.")
         min_age = 0
-        max_age = max(params.lifespan_days for params in self.species_params.values())
         species_list = list(self.species_params.keys())
         for _ in range(starting_population): # Randomly pick a species        
             species_name = random.choice(species_list)
@@ -101,98 +102,10 @@ class PrimateSimulation:
             self.population.append(primate)
         print(f"Initial population created: {len(self.population)} individuals (random species).")
 
-    def _find_union_for_primate(self, primate: Primate, eligible_pool: List[Primate], marriage_type):
-        """
-        This is the new "Coupling" function.
-        It finds a partner or existing union for the given primate.
-        """
-        if marriage_type == "asexual":
-            if primate.is_hermaphrodite:
-                new_union = Union(marriage_type="asexual", max_size=1)
-                new_union.add_member(primate)
-                self.unions.append(new_union)
-            return # Asexual non-hermaphrodites can't couple
-
-        potential_partners = []
-        for partner in eligible_pool:
-            if partner is primate or partner.union is not None:
-                continue          
-            if (primate.is_hermaphrodite and partner.params.is_hermaphrodite) or \
-               (primate.is_female != partner.is_female):
-                potential_partners.append(partner) # Find opposite sex (or any other hermaphrodite)
-
-        if not potential_partners:
-            return # No partners available
-
-        
-        potential_partners.sort(key=lambda p: abs(p.age_days - primate.age_days))
-        best_partner = potential_partners[0] # Sort partners by closest age
-
-        if marriage_type == "monogamy":
-            new_union = Union(marriage_type="monogamy", max_size=2)
-            new_union.add_member(primate)
-            new_union.add_member(best_partner)
-            self.unions.append(new_union)
-            return
-
-        if marriage_type == "polygyny":
-            if not primate.is_female: # Male is seeking
-                # Males form new unions
-                new_union = Union(marriage_type="polygyny", max_size=5)
-                new_union.add_member(primate)
-                new_union.add_member(best_partner) # Add one female
-                self.unions.append(new_union)
-            else: # Female is seeking              
-                for union in self.unions:
-                    if union.marriage_type == "polygyny" and \
-                       len(union.members) < union.max_size and \
-                       union.has_males(): # Ensure union has a male
-                        union.add_member(primate)
-                        return # Try to join an existing union that has a male and space
-               
-                if not best_partner.is_female:
-                    new_union = Union(marriage_type="polygyny", max_size=5)
-                    new_union.add_member(best_partner) # Add the male first
-                    new_union.add_member(primate)  # If no unions to join, form a new one with the best partner (who must be male)
-                    self.unions.append(new_union)
-            return
-
-        if marriage_type == "polyandry":
-            if primate.is_female:  # Female is seeking
-                if not best_partner.is_female:
-                    new_union = Union(marriage_type="polyandry", max_size=5)
-                    new_union.add_member(primate)
-                    new_union.add_member(best_partner)
-                    self.unions.append(new_union)
-            else:  # Male is seeking            
-                for union in self.unions:
-                    if union.marriage_type == "polyandry" and len(union.members) < union.max_size and union.has_females():
-                        union.add_member(primate)
-                        return    # Try to join an existing union with a female and space         
-                if best_partner.is_female:
-                    new_union = Union(marriage_type="polyandry", max_size=5)
-                    new_union.add_member(best_partner) # Add the female first
-                    new_union.add_member(primate)
-                    self.unions.append(new_union) # If no union to join, form a new one with the best partner (who must be female)
-            return
-
-        if marriage_type == "polygamy":
-            for union in self.unions:
-                if union.marriage_type == "polygamy" and len(union.members) < union.max_size:
-                    union.add_member(primate)
-                    return
-            
-            new_union = Union(marriage_type="polygamy", max_size=9)
-            new_union.add_member(primate)
-            new_union.add_member(best_partner)
-            self.unions.append(new_union) # If none, form a new one
-            return
-
-
     def run_simulation(self, num_years: float):
         start_time = time.time()  # Add this at the start of run_simulation
         print("--- Simulation Starting ---")
-        self._log_population_stats(0, 0, 0, 0)
+        log_population_stats(self.current_day, self.population, self.unions, self.carrying_capacity, self.history, 0, 0, 0, 0)
 
         total_births = 0
         total_deaths = 0
@@ -338,7 +251,7 @@ class PrimateSimulation:
                     if not (random.random() < marriage_chance):
                         continue
                         
-                    self._find_union_for_primate(primate, partner_pool, "monogamy")
+                    find_union_for_primate(primate, partner_pool, "monogamy", self.unions)
 
             for mother in new_population:              
                 is_eligible = (
@@ -516,7 +429,7 @@ class PrimateSimulation:
                  log_check = True
 
             if log_check or (self.current_day >= total_days): # Always log last cycle
-                self._log_population_stats(cycle, birth_counter, death_counter, eligible_female_counter)
+                log_population_stats(self.current_day, self.population, self.unions, self.carrying_capacity, self.history, cycle, birth_counter, death_counter, eligible_female_counter)
                 cycle_days_passed = 0          
             if not primate.params.is_hermaphrodite and not primate.params.is_sequential_species:  # 9. Check for extinction
                 if not any(p.is_female for p in self.population) or not any(not p.is_female for p in self.population):
@@ -543,13 +456,7 @@ class PrimateSimulation:
         print("\n--- Simulation Finished ---")
         total_duration = self.current_day / earth_year
         
-        initial_pop_size = self.history[0]['population'] if self.history else 1
-     
-        agents_past_menopause = [p for p in self.population if p.age_years * earth_year >= p.params.menopause_age_days]
-        agents_at_lifespan = [
-            p for p in self.population 
-            if p.age_years * earth_year >= (p.params.lifespan_days * 0.98)  # Use age_years for TFR calculation
-        ]
+        initial_pop_size = self.history[0]['population'] if self.history else 1    
         
         population_over_time = [h['population'] for h in self.history if h['cycle'] != 0]
         average_population = sum(population_over_time) / len(population_over_time) if population_over_time else initial_pop_size
@@ -577,159 +484,14 @@ class PrimateSimulation:
             print(self.unions[:40])
         else:
             print(self.unions)
-        
-        self.display_population_pyramid()
-
+               
         end_time = time.time()
         runtime = end_time - start_time
         print(f"\nSimulation Runtime: {runtime:.2f} seconds") # Add runtime calculation and display at the end
-        self.plot_population_history()
-        
-    def _log_population_stats(self, cycle, births_this_cycle, deaths_this_cycle, potential_mother_counter):
-        total_pop = len(self.population)
-        
-        median_age_years = 0.0
-        if total_pop > 0:
-                ages_in_years = np.array([p.age_years for p in self.population])
-                median_age_years = np.median(ages_in_years)
 
-        print(f"\n--- Cycle: {cycle} (Day: {self.current_day}) Year: {self.current_day / earth_year:.1f} ---")
-        print(f"Total Population: {total_pop:,d}")
-        print(f"  - Median Age: {median_age_years:.1f} years")
-
-        females = sum(1 for p in self.population if p.is_female)
-        males = total_pop - females
-        sex_ratio = males / females if females > 0 else float('inf')
-        print(f"  - Females: {females:,d}")
-        print(f"  - Males: {males:,d}")
-        print(f"  - Sex Ratio (M/F): {sex_ratio:.2f}")
-        
-        if cycle != 0 and cycle != "Final":
-            print(f"Births This Cycle: {births_this_cycle:,d}")
-            print(f"Deaths This Cycle: {deaths_this_cycle:,d}")
-            print(f"Potential Mothers: {potential_mother_counter:,d}")
-            print(f"Breeding Unions: {len(self.unions):,d}")
-
-        self.history.append({'cycle': cycle, 'population': total_pop, 'females': females, 'males': males, 'current_day': self.current_day})
-
-    def display_population_pyramid(self):
-        if not self.population:
-            print("\n--- Population Pyramid ---")
-            print("Population is extinct.")
-            return
-
-        print("\n--- Population Pyramid ---")
-                
-        max_age_obj = max(self.population, key=lambda p: p.age_years, default=None)
-        if not max_age_obj: 
-            print("Population is extinct.")
-            return
-            
-        max_age = round(max_age_obj.age_years)
-        
-        if earth_year <= 0:
-            print("Error: earth_year is zero or negative.")
-            return
-
-        bracket_size = max(1, max_age // 15)
-             
-        brackets = range(0, (max_age // bracket_size) * bracket_size + bracket_size, bracket_size)
-        
-        age_distribution = {f"{i}-{i+bracket_size-1}": {"male": 0, "female": 0} for i in brackets}
-        
-        for p in self.population:
-            age_in_years = int(p.age_years) # Use .age_years property
-            bracket_start = (age_in_years // bracket_size) * bracket_size
-            bracket_key = f"{bracket_start}-{bracket_start+bracket_size-1}"
-            if bracket_key in age_distribution:
-                if p.is_female: # This will be true for all hermaphrodites
-                    age_distribution[bracket_key]["female"] += 1
-                else:
-                    age_distribution[bracket_key]["male"] += 1
-       
-        max_count_in_bracket = 1
-        for data in age_distribution.values():
-            max_count_in_bracket = max(max_count_in_bracket, data['male'], data['female'])
-            
-        pyramid_width = 30
-        scale = pyramid_width / max_count_in_bracket if max_count_in_bracket > 0 else 1
-        
-        print(f"{'Males'.rjust(pyramid_width)} | Age | {'Females'.ljust(pyramid_width)}")
-        print(f'{"-"*pyramid_width}-+-----+--{"-"*pyramid_width}')
-        for bracket_label in sorted(age_distribution.keys(), key=lambda x: int(x.split('-')[0])):
-            data = age_distribution[bracket_label]
-            male_bar = '█' * int(data['male'] * scale)
-            female_bar = '█' * int(data['female'] * scale)
-            print(f"{male_bar.rjust(pyramid_width)} | {bracket_label.center(5)} | {female_bar.ljust(pyramid_width)}")
-
-    def plot_population_history(self):
-        if not self.history:
-            print("No history recorded, cannot plot graph.")
-            return
-
-        years = [r['current_day'] / earth_year for r in self.history]
-        populations = [r['population'] for r in self.history]
-
-        if not years:
-            print("No data points to plot.")
-            return
-
-        plt.figure(figsize=(12, 6))
-        plt.plot(years, populations, marker='o', linestyle='-', color='b', markersize=4)
-        
-        plt.title(f"This Population Over Time")
-        plt.xlabel("Years")
-        plt.ylabel("Total Population")
-        
-        total_duration_years = self.current_day / earth_year
-        if total_duration_years > 1: # X-axis scaling
-            tick_interval = math.ceil(total_duration_years / 20)
-            if tick_interval <= 0:
-                tick_interval = 1
-            max_year = int(total_duration_years) + tick_interval
-            plt.xticks(range(0, max_year, tick_interval))
-       
-        max_population = max(populations) if populations else 1 # Y-axis scaling
-        min_population = min(populations) if populations else 0
-        population_range = max_population - min_population
-       
-        if population_range > 0:
-            log_range = math.log10(population_range) if population_range > 1 else 0.1
-            if log_range < 1.0:
-                magnitude = 1
-            elif population_range > 1:
-                magnitude = 5 ** math.floor(log_range) #Tick marks of 50 on the Y axis. 
-            else:
-                magnitude = 1
-            
-            tick_size = magnitude  
-            if population_range / magnitude < 5:
-                tick_size = magnitude / 2
-            elif population_range / magnitude > 10:
-                tick_size = magnitude * 2
-            
-            tick_size = max(1, round(tick_size)) # Ensure tick size is at least 1 and an integer
-            
-            y_min = math.floor(min_population / tick_size) * tick_size
-            y_max = math.ceil(max_population / tick_size) * tick_size
-            
-            if y_min == y_max:
-                y_min = max(0, y_min - tick_size)
-                y_max = y_max + tick_size
-
-            y_ticks = np.arange(y_min, y_max + tick_size, tick_size)
-            plt.yticks(y_ticks) # Create y-axis ticks from floor to ceiling with calculated interval
-        elif max_population > 0:
-             plt.yticks(np.arange(0, max_population + 1, max(1, int(max_population / 5))))
-        else:
-             plt.yticks([0, 1])
-
-        plt.grid(True, which='both', linestyle='--', linewidth=0.5)
-        plt.tight_layout()
-        
-        print("\nDisplaying population graph...")
-        plt.show()
-
+        display_population_pyramid(self.population, earth_year)
+        plot_population_history(self.history, species_names, self.current_day)
+      
 if __name__ == "__main__":
     species_names = ["modern_human", "orc", "elf"]
     sim_locale = Locale.from_json("locales.json", "nauru")

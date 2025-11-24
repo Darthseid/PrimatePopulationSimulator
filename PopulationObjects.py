@@ -315,3 +315,89 @@ def calculate_age_based_fertility(
     # The final fertility is the product of the peak rate and both logistic curves
     return max_fertility * growth_logistic * decline_logistic
 
+def find_union_for_primate(primate: Primate, eligible_pool: Set[Primate], marriage_type, active_unions: List[Union]):
+        """
+        This is the new "Coupling" function.
+        It finds a partner or existing union for the given primate.
+        """
+        if marriage_type == "asexual":
+            if primate.is_hermaphrodite:
+                new_union = Union(marriage_type="asexual", max_size=1)
+                new_union.add_member(primate)
+                active_unions.append(new_union)
+            return # Asexual non-hermaphrodites can't couple
+
+        potential_partners = []
+        for partner in eligible_pool:
+            if partner is primate or partner.union is not None:
+                continue          
+            if (primate.is_hermaphrodite and partner.params.is_hermaphrodite) or \
+               (primate.is_female != partner.is_female):
+                potential_partners.append(partner) # Find opposite sex (or any other hermaphrodite)
+
+        if not potential_partners:
+            return # No partners available
+        
+        potential_partners.sort(key=lambda p: abs(p.age_days - primate.age_days))
+        best_partner = potential_partners[0] # Sort partners by closest age
+
+        if marriage_type == "monogamy":
+            new_union = Union(marriage_type="monogamy", max_size=2)
+            new_union.add_member(primate)
+            new_union.add_member(best_partner)
+            active_unions.append(new_union)
+            return
+
+        if marriage_type == "polygyny":
+            if not primate.is_female: # Male is seeking
+                # Males form new unions
+                new_union = Union(marriage_type="polygyny", max_size=5)
+                new_union.add_member(primate)
+                new_union.add_member(best_partner) # Add one female
+                active_unions.append(new_union)
+            else: # Female is seeking              
+                for union in active_unions:
+                    if union.marriage_type == "polygyny" and \
+                       len(union.members) < union.max_size and \
+                       union.has_males(): # Ensure union has a male
+                        union.add_member(primate)
+                        return # Try to join an existing union that has a male and space
+               
+                if not best_partner.is_female:
+                    new_union = Union(marriage_type="polygyny", max_size=5)
+                    new_union.add_member(best_partner) # Add the male first
+                    new_union.add_member(primate)  # If no unions to join, form a new one with the best partner (who must be male)
+                    active_unions.append(new_union)
+            return
+
+        if marriage_type == "polyandry":
+            if primate.is_female:  # Female is seeking
+                if not best_partner.is_female:
+                    new_union = Union(marriage_type="polyandry", max_size=5)
+                    new_union.add_member(primate)
+                    new_union.add_member(best_partner)
+                    active_unions.append(new_union)
+            else:  # Male is seeking            
+                for union in active_unions:
+                    if union.marriage_type == "polyandry" and len(union.members) < union.max_size and union.has_females():
+                        union.add_member(primate)
+                        return    # Try to join an existing union with a female and space         
+                if best_partner.is_female:
+                    new_union = Union(marriage_type="polyandry", max_size=5)
+                    new_union.add_member(best_partner) # Add the female first
+                    new_union.add_member(primate)
+                    active_unions.append(new_union) # If no union to join, form a new one with the best partner (who must be female)
+            return
+
+        if marriage_type == "polygamy":
+            for union in active_unions:
+                if union.marriage_type == "polygamy" and len(union.members) < union.max_size:
+                    union.add_member(primate)
+                    return
+            
+            new_union = Union(marriage_type="polygamy", max_size=9)
+            new_union.add_member(primate)
+            new_union.add_member(best_partner)
+            active_unions.append(new_union) # If none, form a new one
+            return
+
