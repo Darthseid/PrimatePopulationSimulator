@@ -26,7 +26,6 @@ class PrimateSimulation:
         self.locale = locale
         self.population: list[Primate] = []
         self.current_day = 0
-        self.unions: list[Union] = []
         self.history = []
 
         self.cycle_days = min(params.interbirth_interval_days for params in self.species_params.values())       
@@ -99,7 +98,7 @@ class PrimateSimulation:
     def run_simulation(self, num_years: float):
         start_time = time.time()  # Add this at the start of run_simulation
         print("--- Simulation Starting ---")
-        log_population_stats(self.current_day, self.population, self.unions, self.history, 0, 0, 0, 0)
+        log_population_stats(self.current_day, self.population, self.history, 0, 0, 0, 0)
 
         total_births = 0
         total_deaths = 0
@@ -178,9 +177,7 @@ class PrimateSimulation:
                         newborns.append(respawned_male) # Add to newborns list
                     if primate.union:
                         primate.union.remove_member(primate)              
-                    continue  # Primate died, don't add to new population
-              
-                self.unions = [union for union in self.unions if not union.is_dissolved()]  # After processing deaths, clean up dissolved unions:               
+                    continue  # Primate died, don't add to new population                
 
                 new_population.append(primate)
                 
@@ -191,16 +188,7 @@ class PrimateSimulation:
                 else:
                     male_count += 1
                     if primate.is_fertile and primate.age_years * earth_year >= primate.params.puberty_age_days:
-                        fertile_male_count += 1
-            
-            surviving_unions = []
-            for union in self.unions:
-                if union.is_dissolved():
-                    for member in union.members:
-                        member.union = None # Uncouple all surviving members
-                else:
-                    surviving_unions.append(union)
-            self.unions = surviving_unions
+                        fertile_male_count += 1           
            
             if primate.params.is_hermaphrodite:
                 female_count = len(new_population) # Recalculate based on survivors
@@ -232,7 +220,8 @@ class PrimateSimulation:
                     p for p in eligible_for_coupling 
                     if not (p.is_female and p.age_years * earth_year >= primate.params.menopause_age_days) #This excludes post-menopausal females.
                 }
-
+                coupled_primates = [p for p in new_population if p.union is not None]
+                sample_unions_to_search = []                
                 for primate in eligible_for_coupling:
                     if primate.union is not None:
                         continue # Already coupled in this loop
@@ -246,8 +235,11 @@ class PrimateSimulation:
                     sample_size = min(len(partner_pool), 20) #Limit sample size for performance
                     if sample_size > 0:
                             local_pool = random.sample(partner_pool, sample_size)
-                            sample_unions = random.sample(self.unions, min(len(self.unions), 20))
-                    find_union_for_primate(primate, local_pool, "monogamy", sample_unions)
+                            sample_size_unions = min(len(coupled_primates), sample_size * 3) #Larger since there are more people than unions 
+                            sampled_people = random.sample(coupled_primates, sample_size_unions)
+                            unique_sampled_unions = list({p.union for p in sampled_people})
+                            sample_unions = unique_sampled_unions[:sample_size] #This is all necessary to improve performance and to randomize spouses more.
+                    find_union_for_primate(primate, local_pool, "polyandry", sample_unions)
 
             for mother in new_population:              
                 is_eligible = (
@@ -387,8 +379,6 @@ class PrimateSimulation:
                         primate.union.remove_member(primate) 
                 else:
                     final_survivors.append(primate)
-
-            self.unions = [union for union in self.unions if not union.is_dissolved()] 
             
             self.population = final_survivors + newborns # 6. Combine survivors and newborns
 
@@ -437,10 +427,9 @@ class PrimateSimulation:
                 total_deaths += death_counter
             
             self.population = final_population
-            self.unions = [union for union in self.unions if not union.is_dissolved()]
 
             if self.current_day >= total_days or cycle % cycle_interval == 0: # Always log last cycle
-                log_population_stats(self.current_day, self.population, self.unions, self.history, cycle, birth_counter, death_counter, eligible_female_counter)
+                log_population_stats(self.current_day, self.population, self.history, cycle, birth_counter, death_counter, eligible_female_counter)
                 cycle_days_passed = 0          
             if not primate.params.is_hermaphrodite and not primate.params.is_sequential_species:  # 9. Check for extinction
                 if not any(p.is_female for p in self.population) or not any(not p.is_female for p in self.population):
@@ -453,14 +442,10 @@ class PrimateSimulation:
                 print("Reason: Population is extinct.")
                 break
 
-            alive_set = set(self.population)
-            for union in self.unions:
-                for member in union.members[:]:
-                    if member not in alive_set:
-                        union.remove_member(member)
-           
-            self.unions = [u for u in self.unions if not u.is_dissolved()] # Remove dissolved/empty unions
-                
+            coupled_primates = [p for p in self.population if p.union]
+            for primate in coupled_primates:
+                if primate.union.is_dissolved():
+                    primate.union.remove_member(primate)                       
             cycle += 1
 
         print("\n--- Simulation Finished ---")
@@ -485,20 +470,20 @@ class PrimateSimulation:
         else:
             print("Percent that died of old age: N/A (0 deaths)")
         
+        final_unions_set = {p.union for p in self.population if p.union}
+        final_unions_list = list(final_unions_set)
+        print(f"Breeding Union Count: {len(final_unions_set)}")
         print("Total Cycle Count:", cycle - 1)
         print(f"Crude Birth Rate (per 1,000/year, based on avg pop): {calculated_birth_rate:.2f}")
         print(f"Crude Death Rate (per 1,000/year, based on avg pop): {calculated_death_rate:.2f}")
         print(f"Rate of Natural Increase: {calculated_birth_rate - calculated_death_rate:.2f} per 1,000/year")
         print(f"Population Change: {(len(self.population) / initial_pop_size * 100):.2f}%" if initial_pop_size > 0 else "N/A")
-        coupled_primates = [p for p in self.population if p.union is not None]
-        sample_size = min(len(coupled_primates), 40)
         
+        sample_size = min(len(final_unions_set), 40)      
         print(f"Unions of Random Sample ({sample_size} coupled individuals):")
         if sample_size > 0:
-            sampled_primates = random.sample(coupled_primates, sample_size)
-            # Use a set comprehension to extract unique unions from the sampled primates
-            sampled_unions = list({p.union for p in sampled_primates})
-            print(sampled_unions)
+            sampled_unions = random.sample(final_unions_list, sample_size) #Sampling a set is deprecated
+            print(sampled_unions) #Only unique unions printed due to set usage
         else:
             print("[] (No coupled individuals found)")
                

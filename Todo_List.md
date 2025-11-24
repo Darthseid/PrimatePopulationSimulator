@@ -10,8 +10,9 @@
 ⦁	Add Mixed Populations
 ⦁	Make diet and food resources more detailed.
 ⦁	Have Polygamy/polygyny work well with Union changes.
-⦁	Dissolve solo unions.
+⦁	Have both father and mother limit number of children.
+⦁	Have father be randomized for polygamy.
 
 **Bugs:**
 
-⦁	
+⦁	Total births & total deaths are absurdly high.

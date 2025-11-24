@@ -208,9 +208,9 @@ class Union:
     # In Union class
     def __repr__(self):
         member_descriptions = ", ".join(
-        [f"{'♀️ ' if m.is_female else '♂️ '}{m.species_name}({m.age_years:.0f} {m.number_of_healthy_children})" for m in self.members]
+        [f"{'♀️ ' if m.is_female else '♂️ '}{m.species_name}( Age: {m.age_years:.0f} Kids: {m.number_of_healthy_children})" for m in self.members]
         )
-        return f"<Union ({self.marriage_type}{len(self.members)}/{self.max_size}) | Members: [{member_descriptions}]>"
+        return f"<Union ({self.marriage_type}{len(self.members)}/{self.max_size}) | Members: [{member_descriptions}]>\n"
 
 def convert_years_to_string(years_float: float) -> str:
     """

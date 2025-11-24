@@ -4,7 +4,7 @@ import math
 
 earth_year = 365.2422
 
-def log_population_stats(current_day, population, unions, history, cycle, births, deaths, eligible):
+def log_population_stats(current_day, population, history, cycle, births, deaths, eligible):
         total_pop = len(population)
         
         median_age_years = 0.0
@@ -27,7 +27,6 @@ def log_population_stats(current_day, population, unions, history, cycle, births
             print(f"Births This Cycle: {births:,d}")
             print(f"Deaths This Cycle: {deaths:,d}")
             print(f"Potential Mothers: {eligible:,d}")
-            print(f"Breeding Unions: {len(unions):,d}")
 
         species_counts = {}
         for p in population:
