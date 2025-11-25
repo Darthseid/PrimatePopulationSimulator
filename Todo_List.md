@@ -1,15 +1,8 @@
 **Future Features:**
 
-⦁	Make Simulator Scalable for huge populations
-
 ⦁	Add disasters like famines
-
 ⦁	Test how different marriage patterns affect population growth
-
 ⦁	Add Uneven Hybrids & Codominant Hybrids
-⦁	Add Mixed Populations
-⦁	Make diet and food resources more detailed.
-⦁	Have Polygamy/polygyny work well with Union changes.
 ⦁	Have both father and mother limit number of children.
 ⦁	Have father be randomized for polygamy.
 

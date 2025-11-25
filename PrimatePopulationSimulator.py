@@ -239,7 +239,7 @@ class PrimateSimulation:
                             sampled_people = random.sample(coupled_primates, sample_size_unions)
                             unique_sampled_unions = list({p.union for p in sampled_people})
                             sample_unions = unique_sampled_unions[:sample_size] #This is all necessary to improve performance and to randomize spouses more.
-                    find_union_for_primate(primate, local_pool, "polyandry", sample_unions)
+                    find_union_for_primate(primate, local_pool, "monogamy", sample_unions)
 
             for mother in new_population:              
                 is_eligible = (
@@ -286,8 +286,9 @@ class PrimateSimulation:
                             potential_fathers.append(member)
 
                 if potential_fathers:
-                    potential_fathers.sort(key=lambda x: x.age_years, reverse=True)
-                    father = potential_fathers[0]
+                    father = random.choice(potential_fathers)
+                    if father.number_of_healthy_children >= father.params.max_kids_per_primate:
+                        continue # Both parents will stop having kids if either hits max
                     male_age_days = father.age_years * earth_year
                     if father.params.lifespan_days > 0:
                         age_ratio = male_age_days / father.params.lifespan_days
@@ -321,11 +322,14 @@ class PrimateSimulation:
                         if random.random() > adjusted_infant_mortality / genetic_adjuster:
                             child_params = self.species_params[child_species_name]
                             hybrid_sterile_chance = child_params.sterile_chance
+                            hybrid_sterile_boost = 0.2
+                            is_female_child = True if child_params.is_hermaphrodite else (random.random() < child_params.sex_ratio_at_birth)
+                            if not is_female_child:
+                                hybrid_sterile_boost *= 2 #Males are more likely to be sterile in hybrids
                             if father:
                                 father.number_of_healthy_children += 1
                                 if mother.species_name != father.species_name:
-                                    hybrid_sterile_chance += 0.4
-                            is_female_child = True if child_params.is_hermaphrodite else (random.random() < child_params.sex_ratio_at_birth)
+                                    hybrid_sterile_chance += hybrid_sterile_boost
                             is_initially_fertile = random.random() > hybrid_sterile_chance
                             child = Primate(
                                 species_name=child_species_name,
@@ -496,8 +500,8 @@ class PrimateSimulation:
       
 if __name__ == "__main__":
     species_names = ["bounty_human", "satyr", "usagimimi"]
-    sim_locale = Locale.from_json("locales.json", "nauru")
+    sim_locale = Locale.from_json("locales.json", "amazonas")
     #simulation = PrimateSimulation(params=sim_params, locale=sim_locale, scenario_name="bounty_mutiny")
     simulation = PrimateSimulation(species_names, sim_locale) # For a random start
-    simulation.run_simulation(num_years=90.0)
+    simulation.run_simulation(num_years=75.0)
 
