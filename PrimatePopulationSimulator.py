@@ -108,6 +108,7 @@ class PrimateSimulation:
         cycle = 1
         cycle_days_passed = 0
         cycle_length_in_years = self.cycle_days / earth_year
+        hybridization_type = "lineal"
 
         if self.cycle_days <= 0: # Safety check
             cycle_interval = 1
@@ -305,14 +306,26 @@ class PrimateSimulation:
                     num_births = 1
                     while random.random() <= mother.params.chance_of_multiple_birth:
                         num_births += 1
+
                     if father:
-                        child_species_name = random.choice([mother.species_name, father.species_name])
+                        if hybridization_type == "random":  # Hybrids can be any gender.
+                            child_species_name = random.choice([mother.species_name, father.species_name])
+                        elif hybridization_type == "lineal":  # Sons follow father's species, daughters follow mother's species.
+                            sex_ratio_at_birth_chance = random.choice(
+                                [mother.params.sex_ratio_at_birth, father.params.sex_ratio_at_birth]
+                                                                    )
+                            if random.random() <= sex_ratio_at_birth_chance:
+                                child_species_name = mother.species_name
+                            else:
+                                child_species_name = father.species_name
+
                         base_infant_mortality = self.species_params[child_species_name].infant_mortality_rate
                         adjusted_infant_mortality = base_infant_mortality * (1.0 + (1.0 - genetic_adjuster)) ** 1.59
                         adjusted_infant_mortality /= self.species_params[mother.species_name].genetic_diversity
                         if mother.species_name != father.species_name:
                             adjusted_infant_mortality /= self.species_params[father.species_name].genetic_diversity
-                    else:
+
+                    else:  # Asexual or hermaphrodite reproduction
                         child_species_name = mother.species_name
                         base_infant_mortality = self.species_params[child_species_name].infant_mortality_rate
                         adjusted_infant_mortality = base_infant_mortality * (1.0 + (1.0 - genetic_adjuster)) ** 1.59
@@ -323,7 +336,10 @@ class PrimateSimulation:
                             child_params = self.species_params[child_species_name]
                             hybrid_sterile_chance = child_params.sterile_chance
                             hybrid_sterile_boost = 0.2
-                            is_female_child = True if child_params.is_hermaphrodite else (random.random() < child_params.sex_ratio_at_birth)
+                            if hybridization_type == "lineal":
+                                is_female_child = True if mother.species_name == child_species_name else False
+                            else: 
+                                is_female_child = True if child_params.is_hermaphrodite else (random.random() < child_params.sex_ratio_at_birth)
                             if not is_female_child:
                                 hybrid_sterile_boost *= 2 #Males are more likely to be sterile in hybrids
                             if father:
@@ -351,8 +367,7 @@ class PrimateSimulation:
                                     age_days=4748,
                                     is_initially_fertile=random.random() > mother.params.sterile_chance
                                 )
-                                # Assuming you want to add the respawned male to the population or newborns list here
-                                # newborns.append(respawned_male) 
+                                newborns.append(respawned_male) 
 
                     # Reset breeding timer
                     mother.next_breeding_day = self.current_day + mother.params.interbirth_interval_days         
