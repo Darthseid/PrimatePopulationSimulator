@@ -1,7 +1,5 @@
-﻿import math
+﻿import numpy as np
 import random
-from tkinter import SE
-import numpy as np
 import json
 from typing import Optional, Set, List
 
@@ -102,7 +100,7 @@ class SimulationParameters:
             raise ValueError(f"Invalid JSON format in file: {json_path}")
 
     def __init__(self, **params):
-        self.species_name = params["Species_Name"]
+        self.species_name = params["species_name"]
         self.puberty_age_days = params["puberty_age_days"]
         self.menopause_age_days = params["menopause_age_days"]
         self.lifespan_days = params["lifespan_days"] 
@@ -153,6 +151,55 @@ class SimulationParameters:
             self.per_cycle_adult_mortality_rate = self.adult_mortality_rate * cycle_length_in_years
         else:
             self.per_cycle_adult_mortality_rate = 0
+
+    @classmethod
+    def from_parents(cls, p1: 'SimulationParameters', p2: 'SimulationParameters'):
+        """
+        Creates a new SimulationParameters object by averaging two parent profiles.
+        Used for "Midpoint" hybridization.
+        """       
+        new_params = cls.__new__(cls) # Create a new empty instance
+                   
+        s1_parts = set(p1.species_name.split('-'))  # 1. Strings & Categorical (Random Inheritance with De-duplication)
+        s2_parts = set(p2.species_name.split('-')) # Split both parent names by hyphen to get base constituents
+              
+        combined_parts = sorted(list(s1_parts.union(s2_parts)))
+        new_params.species_name = "-".join(combined_parts)
+        new_params.diet_type = random.choice([p1.diet_type, p2.diet_type]) # Combine unique parts and sort them to ensure consistent naming (e.g. "A-B" vs "B-A")
+                
+        new_params.is_hermaphrodite = False
+        new_params.is_sequential_species = False
+        new_params.ages_backward = random.choice([p1.ages_backward, p2.ages_backward]) # 2. Booleans (Midpoint Rules)
+              
+        new_params.puberty_age_days = (p1.puberty_age_days + p2.puberty_age_days) / 2
+        new_params.menopause_age_days = (p1.menopause_age_days + p2.menopause_age_days) / 2
+        new_params.lifespan_days = (p1.lifespan_days + p2.lifespan_days) / 2
+        new_params.coupling_rate = (p1.coupling_rate + p2.coupling_rate) / 2  # 3. Numeric Stats (Average)
+        new_params.gestation_days = (p1.gestation_days + p2.gestation_days) / 2
+        new_params.interbirth_interval_days = (p1.interbirth_interval_days + p2.interbirth_interval_days) / 2
+        new_params.max_kids_per_primate = int((p1.max_kids_per_primate + p2.max_kids_per_primate) / 2)
+        new_params.chance_of_multiple_birth = (p1.chance_of_multiple_birth + p2.chance_of_multiple_birth) / 2
+        new_params.base_fertility_rate = (p1.base_fertility_rate + p2.base_fertility_rate) / 2
+        new_params.miscarriage_stillborn_rate = (p1.miscarriage_stillborn_rate + p2.miscarriage_stillborn_rate) / 2
+        new_params.sterile_chance = (p1.sterile_chance + p2.sterile_chance) / 2
+        new_params.sex_ratio_at_birth = (p1.sex_ratio_at_birth + p2.sex_ratio_at_birth) / 2
+        new_params.infant_mortality_rate = (p1.infant_mortality_rate + p2.infant_mortality_rate) / 2
+        new_params.maternal_mortality_rate = (p1.maternal_mortality_rate + p2.maternal_mortality_rate) / 2
+        new_params.adult_mortality_rate = (p1.adult_mortality_rate + p2.adult_mortality_rate) / 2
+        new_params.calories_needed_per_primate = (p1.calories_needed_per_primate + p2.calories_needed_per_primate) / 2
+        new_params.genetic_diversity = (p1.genetic_diversity + p2.genetic_diversity) / 2
+        new_params.fertility_rising_steepness = (p1.fertility_rising_steepness + p2.fertility_rising_steepness) / 2
+        new_params.fertility_falling_steepness = (p1.fertility_falling_steepness + p2.fertility_falling_steepness) / 2
+        new_params.contraception_abortion_use_rate = (p1.contraception_abortion_use_rate + p2.contraception_abortion_use_rate) / 2
+       
+        new_params.effective_gestation_days = new_params.gestation_days + new_params.interbirth_interval_days 
+        cycle_length_in_years = new_params.effective_gestation_days / earth_year
+        new_params.per_cycle_fertility_rate = new_params.base_fertility_rate * cycle_length_in_years
+        new_params.fertile_days = new_params.menopause_age_days - new_params.puberty_age_days  # 4. Recalculate Derived Parameters    
+            
+        new_params.effective_per_cycle_fertility_rate = min(new_params.per_cycle_fertility_rate * (1 - new_params.miscarriage_stillborn_rate), 0.99999 )
+                                                                          
+        return new_params
 
 class Union:
     """
@@ -273,7 +320,6 @@ def find_union_for_primate(primate: Primate, eligible_pool: Set[Primate], marria
             if primate.is_hermaphrodite:
                 new_union = Union(marriage_type="asexual", max_size=1)
                 new_union.add_member(primate)
-                active_unions.append(real_union)
             return # Asexual non-hermaphrodites can't couple
 
         potential_partners = []

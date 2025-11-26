@@ -1,6 +1,6 @@
 {
   "medieval_human": {
-    "Species_Name": "medieval_humans",
+    "species_name": "medieval_humans",
     "puberty_age_days": 4566,
     "menopause_age_days": 18627,
     "lifespan_days": 25500,
@@ -25,7 +25,7 @@
     "contraception_abortion_use_rate": 0.01
   },
   "modern_human": {
-    "Species_Name": "modern_humans",
+    "species_name": "modern_humans",
     "coupling_rate": 0.22,
     "puberty_age_days": 3835,
     "menopause_age_days": 19627,
@@ -50,7 +50,7 @@
     "contraception_abortion_use_rate": 0.55
   },
   "bounty_human": {
-    "Species_Name": "bounty_humans",
+    "species_name": "bounty_humans",
     "coupling_rate": 0.3,
     "puberty_age_days": 4201,
     "menopause_age_days": 18627,
@@ -75,7 +75,7 @@
     "contraception_abortion_use_rate": 0.01
   },
   "chimpanzee": {
-    "Species_Name": "chimpanzees",
+    "species_name": "chimpanzees",
     "puberty_age_days": 3287,
     "coupling_rate": 0.7,
     "menopause_age_days": 17941,
@@ -100,7 +100,7 @@
     "contraception_abortion_use_rate": 0.0
   },
   "gorilla": {
-    "Species_Name": "gorillas",
+    "species_name": "gorillas",
     "puberty_age_days": 2922,
     "menopause_age_days": 13610,
     "lifespan_days": 14610,
@@ -125,7 +125,7 @@
     "contraception_abortion_use_rate": 0.0
   },
   "mandrill": {
-    "Species_Name": "mandrill",
+    "species_name": "mandrill",
     "puberty_age_days": 1370,
     "menopause_age_days": 9997,
     "coupling_rate": 0.4,
@@ -150,7 +150,7 @@
     "contraception_abortion_use_rate": 0.0
   },
   "ring_tailed_lemur": {
-    "Species_Name": "ring_tailed_lemurs",
+    "species_name": "ring_tailed_lemurs",
     "puberty_age_days": 731,
     "menopause_age_days": 6479,
     "lifespan_days": 6575,
@@ -175,7 +175,7 @@
     "contraception_abortion_use_rate": 0.0
   },
   "neanderthal": {
-    "Species_Name": "Neanderthals",
+    "species_name": "Neanderthals",
     "puberty_age_days": 4967,
     "menopause_age_days": 19139,
     "lifespan_days": 30954,
@@ -200,7 +200,7 @@
     "contraception_abortion_use_rate": 0.0
   },
   "orc": {
-    "Species_Name": "Orcs",
+    "species_name": "Orcs",
     "puberty_age_days": 3000,
     "menopause_age_days": 12900,
     "lifespan_days": 15000,
@@ -225,7 +225,7 @@
     "contraception_abortion_use_rate": 0.0
   },
   "goblin": {
-    "Species_Name": "Goblins",
+    "species_name": "Goblins",
     "puberty_age_days": 1000,
     "menopause_age_days": 6000,
     "lifespan_days": 6209,
@@ -250,7 +250,7 @@
     "contraception_abortion_use_rate": 0.0
   },
   "elf": {
-    "Species_Name": "Elves",
+    "species_name": "Elves",
     "puberty_age_days": 36524,
     "menopause_age_days": 109572,
     "lifespan_days": 273932,
@@ -275,7 +275,7 @@
     "contraception_abortion_use_rate": 0.5
   },
   "hobbit": {
-    "Species_Name": "hobbits",
+    "species_name": "hobbits",
     "coupling_rate": 0.2,
     "puberty_age_days": 3201,
     "menopause_age_days": 17627,
@@ -300,7 +300,7 @@
     "contraception_abortion_use_rate": 0.01
   },
   "faerie": {
-    "Species_Name": "faeries",
+    "species_name": "faeries",
     "coupling_rate": 0.3,
     "puberty_age_days": 7,
     "menopause_age_days": 9999,
@@ -325,7 +325,7 @@
     "contraception_abortion_use_rate": 0.0
   },
   "giant": {
-    "Species_Name": "giant",
+    "species_name": "giant",
     "puberty_age_days": 4966,
     "menopause_age_days": 19999,
     "lifespan_days": 26500,
@@ -350,7 +350,7 @@
     "contraception_abortion_use_rate": 0.01
   },
   "peak": {
-    "Species_Name": "Peakers",
+    "species_name": "Peakers",
     "coupling_rate": 0.22,
     "puberty_age_days": 3835,
     "menopause_age_days": 99999,
@@ -375,7 +375,7 @@
     "contraception_abortion_use_rate": 0.55
   },
   "frontloader": {
-    "Species_Name": "frontloaders",
+    "species_name": "frontloaders",
     "coupling_rate": 0.23,
     "puberty_age_days": 600,
     "menopause_age_days": 10957,
@@ -400,7 +400,7 @@
     "contraception_abortion_use_rate": 0.55
   },
   "royal_human": {
-    "Species_Name": "nobles",
+    "species_name": "nobles",
     "coupling_rate": 0.2,
     "puberty_age_days": 4201,
     "menopause_age_days": 18627,
@@ -425,7 +425,7 @@
     "contraception_abortion_use_rate": 0.1
   },
   "hiver": {
-    "Species_Name": "Hivers",
+    "species_name": "Hivers",
     "coupling_rate": 1.0,
     "puberty_age_days": 4201,
     "menopause_age_days": 99999,
@@ -450,7 +450,7 @@
     "contraception_abortion_use_rate": 0.0
   },
   "simult": {
-    "Species_Name": "Simults",
+    "species_name": "Simults",
     "coupling_rate": 0.22,
     "puberty_age_days": 3835,
     "menopause_age_days": 19627,
@@ -475,7 +475,7 @@
     "contraception_abortion_use_rate": 0.7
   },
   "sequent": {
-    "Species_Name": "Sequents",
+    "species_name": "Sequents",
     "coupling_rate": 0.11,
     "puberty_age_days": 3835,
     "menopause_age_days": 19627,
@@ -501,7 +501,7 @@
     "contraception_abortion_use_rate": 0.65
   },
   "merlin": {
-    "Species_Name": "merlins",
+    "species_name": "merlins",
     "coupling_rate": 0.22,
     "puberty_age_days": 3835,
     "menopause_age_days": 19627,
@@ -527,7 +527,7 @@
     "ages_backward": true
   },
   "salarian": {
-    "Species_Name": "Salarians",
+    "species_name": "Salarians",
     "coupling_rate": 0.22,
     "puberty_age_days": 1917,
     "menopause_age_days": 9814,
@@ -552,7 +552,7 @@
     "contraception_abortion_use_rate": 0.55
   },
   "satyr": {
-    "Species_Name": "Satyrs",
+    "species_name": "Satyrs",
     "puberty_age_days": 2405,
     "menopause_age_days": 15764,
     "lifespan_days": 15764,
@@ -577,7 +577,7 @@
     "contraception_abortion_use_rate": 0.56
   },
   "usagimimi": {
-    "Species_Name": "Rabbitfolks",
+    "species_name": "Rabbitfolks",
     "puberty_age_days": 2337,
     "menopause_age_days": 14029,
     "lifespan_days": 14029,
@@ -602,7 +602,7 @@
     "contraception_abortion_use_rate": 0.01
   },
   "coonfolk": {
-    "Species_Name": "Coons",
+    "species_name": "Coons",
     "puberty_age_days": 2466,
     "menopause_age_days": 13663,
     "lifespan_days": 13663,
@@ -627,7 +627,7 @@
     "contraception_abortion_use_rate": 0.05
   },
   "double": {
-    "Species_Name": "Doubles",
+    "species_name": "Doubles",
     "puberty_age_days": 4566,
     "menopause_age_days": 18627,
     "lifespan_days": 25500,
@@ -653,7 +653,7 @@
     "is_sequential_species": true
   },
   "treant": {
-    "Species_Name": "Treants",
+    "species_name": "Treants",
     "puberty_age_days": 7305,
     "menopause_age_days": 109572,
     "lifespan_days": 109572,

@@ -88,7 +88,7 @@ def display_population_pyramid(population, earth_year):
             female_bar = '█' * int(data['female'] * scale)
             print(f"{male_bar.rjust(pyramid_width)} | {bracket_label.center(5)} | {female_bar.ljust(pyramid_width)}")
 
-def plot_population_history(history, species_names, current_day):
+def plot_population_history(history, current_day):
         if not history:
             print("No history recorded, cannot plot graph.")
             return

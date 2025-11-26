@@ -1,12 +1,12 @@
 ﻿import random
 import math
 import json
-from tkinter import SEL
+from re import M
 import numpy as np
 import time
 from typing import List, Optional
 
-from PopulationObjects import Primate, Locale, Union, convert_years_to_string, find_union_for_primate
+from PopulationObjects import Primate, Locale, convert_years_to_string, find_union_for_primate
 from PopulationObjects import SimulationParameters
 from PopulationObjects import calculate_age_based_fertility
 from graphing import log_population_stats, display_population_pyramid, plot_population_history
@@ -49,7 +49,6 @@ class PrimateSimulation:
                 
                 scenario_data = scenarios[scenario_name]["population"]
                 for primate_data in scenario_data:
-                    params = random.choice(self.species_profiles)
                     is_female = primate_data["is_female"]
                     
                     primate = Primate(
@@ -108,7 +107,7 @@ class PrimateSimulation:
         cycle = 1
         cycle_days_passed = 0
         cycle_length_in_years = self.cycle_days / earth_year
-        hybridization_type = "lineal"
+        hybridization_type = "midpoint"
 
         if self.cycle_days <= 0: # Safety check
             cycle_interval = 1
@@ -221,8 +220,8 @@ class PrimateSimulation:
                     p for p in eligible_for_coupling 
                     if not (p.is_female and p.age_years * earth_year >= primate.params.menopause_age_days) #This excludes post-menopausal females.
                 }
-                coupled_primates = [p for p in new_population if p.union is not None]
-                sample_unions_to_search = []                
+                partner_pool_list = list(partner_pool)
+                coupled_primates = [p for p in new_population if p.union is not None]         
                 for primate in eligible_for_coupling:
                     if primate.union is not None:
                         continue # Already coupled in this loop
@@ -235,7 +234,7 @@ class PrimateSimulation:
                         
                     sample_size = min(len(partner_pool), 20) #Limit sample size for performance
                     if sample_size > 0:
-                            local_pool = random.sample(partner_pool, sample_size)
+                            local_pool = random.sample(partner_pool_list, sample_size)
                             sample_size_unions = min(len(coupled_primates), sample_size * 3) #Larger since there are more people than unions 
                             sampled_people = random.sample(coupled_primates, sample_size_unions)
                             unique_sampled_unions = list({p.union for p in sampled_people})
@@ -259,7 +258,7 @@ class PrimateSimulation:
                 contraceptive_use = random.random() < mother.params.contraception_abortion_use_rate
                 mother_age_years = mother.age_years
 
-                if mother.params.fertility_rising_steepness < 0.01 and mother.params.fertility_falling_steepness < 0.01:
+                if mother.params.fertility_rising_steepness < 0.01 and mother.params.fertility_falling_steepness < 0.01: #For skipping the fertility calculation.
                     current_fertility_rate = mother.params.effective_per_cycle_fertility_rate
                 else:
                     fertile_years = mother.params.fertile_days / earth_year
@@ -308,47 +307,41 @@ class PrimateSimulation:
                         num_births += 1
 
                     if father:
-                        if hybridization_type == "random":  # Hybrids can be any gender.
-                            child_species_name = random.choice([mother.species_name, father.species_name])
-                        elif hybridization_type == "lineal":  # Sons follow father's species, daughters follow mother's species.
-                            sex_ratio_at_birth_chance = random.choice(
-                                [mother.params.sex_ratio_at_birth, father.params.sex_ratio_at_birth]
-                                                                    )
+                        is_hybrid = mother.species_name != father.species_name
+                        child_params = random.choice([mother.params, father.params]) #Default and for random hybrids.
+                        if hybridization_type == "lineal":  # Sons follow father's species, daughters follow mother's species.
+                            sex_ratio_at_birth_chance = random.choice([mother.params.sex_ratio_at_birth, father.params.sex_ratio_at_birth])
                             if random.random() <= sex_ratio_at_birth_chance:
-                                child_species_name = mother.species_name
+                                child_params = mother.params
                             else:
-                                child_species_name = father.species_name
-
-                        base_infant_mortality = self.species_params[child_species_name].infant_mortality_rate
-                        adjusted_infant_mortality = base_infant_mortality * (1.0 + (1.0 - genetic_adjuster)) ** 1.59
-                        adjusted_infant_mortality /= self.species_params[mother.species_name].genetic_diversity
-                        if mother.species_name != father.species_name:
-                            adjusted_infant_mortality /= self.species_params[father.species_name].genetic_diversity
-
+                                child_params = father.params
+                        elif hybridization_type == "midpoint" and is_hybrid:  
+                            child_params = SimulationParameters.from_parents(mother.params, father.params)
                     else:  # Asexual or hermaphrodite reproduction
-                        child_species_name = mother.species_name
-                        base_infant_mortality = self.species_params[child_species_name].infant_mortality_rate
-                        adjusted_infant_mortality = base_infant_mortality * (1.0 + (1.0 - genetic_adjuster)) ** 1.59
-                        adjusted_infant_mortality /= self.species_params[mother.species_name].genetic_diversity
+                        child_params = mother.params
+                    base_infant_mortality = child_params.infant_mortality_rate
+                    adjusted_infant_mortality = base_infant_mortality * (1.0 + (1.0 - genetic_adjuster)) ** 1.59
+                    adjusted_infant_mortality /= mother.params.genetic_diversity
+                    if is_hybrid and father:
+                       adjusted_infant_mortality /= father.params.genetic_diversity
 
                     for _ in range(num_births):
                         if random.random() > adjusted_infant_mortality / genetic_adjuster:
-                            child_params = self.species_params[child_species_name]
                             hybrid_sterile_chance = child_params.sterile_chance
                             hybrid_sterile_boost = 0.2
                             if hybridization_type == "lineal":
-                                is_female_child = True if mother.species_name == child_species_name else False
+                                is_female_child = True if mother.params == child_params else False
                             else: 
                                 is_female_child = True if child_params.is_hermaphrodite else (random.random() < child_params.sex_ratio_at_birth)
                             if not is_female_child:
                                 hybrid_sterile_boost *= 2 #Males are more likely to be sterile in hybrids
                             if father:
                                 father.number_of_healthy_children += 1
-                                if mother.species_name != father.species_name:
+                                if is_hybrid:
                                     hybrid_sterile_chance += hybrid_sterile_boost
                             is_initially_fertile = random.random() > hybrid_sterile_chance
                             child = Primate(
-                                species_name=child_species_name,
+                                species_name=child_params.species_name,
                                 is_female=is_female_child,
                                 age_days=0,
                                 is_initially_fertile=is_initially_fertile,
@@ -511,7 +504,7 @@ class PrimateSimulation:
         print(f"\nSimulation Runtime: {runtime:.2f} seconds") # Add runtime calculation and display at the end
 
         display_population_pyramid(self.population, earth_year)
-        plot_population_history(self.history, species_names, self.current_day)
+        plot_population_history(self.history, self.current_day)
       
 if __name__ == "__main__":
     species_names = ["bounty_human", "satyr", "usagimimi"]
