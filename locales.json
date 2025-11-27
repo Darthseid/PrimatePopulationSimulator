@@ -58,9 +58,9 @@
     "biome_type": "Temperate Wetland",
     "area_km2": 3000.0,
     "water_availability_m3": 20000000.0,
-    "carnivore_calories": 1e4,
-    "herbivore_calories": 1e5,
-    "ruminant_calories": 3e5
+    "carnivore_calories": 1e5,
+    "herbivore_calories": 1e6,
+    "ruminant_calories": 3e6
   },
   "south_african_savanna": {
     "name": "South African Savanna",

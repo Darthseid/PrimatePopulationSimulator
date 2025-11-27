@@ -119,6 +119,7 @@ class SimulationParameters:
         self.is_hermaphrodite = params.get("is_hermaphrodite", False) # Use .get() for optional params
         self.is_sequential_species = params.get("is_sequential_species", False)
         self.ages_backward = params.get("ages_backward", False) # --- ADDED ---
+        self.is_dominant = params.get("is_dominant", False) #Is dominant means that this species can only propagate itself.
         
         self.infant_mortality_rate = params["infant_mortality_rate"]
         self.maternal_mortality_rate = params["maternal_mortality_rate"]
@@ -187,7 +188,7 @@ class SimulationParameters:
         new_params.maternal_mortality_rate = (p1.maternal_mortality_rate + p2.maternal_mortality_rate) / 2
         new_params.adult_mortality_rate = (p1.adult_mortality_rate + p2.adult_mortality_rate) / 2
         new_params.calories_needed_per_primate = (p1.calories_needed_per_primate + p2.calories_needed_per_primate) / 2
-        new_params.genetic_diversity = (p1.genetic_diversity + p2.genetic_diversity) / 2
+        new_params.genetic_diversity = (p1.genetic_diversity + p2.genetic_diversity) / 1.5 #Heterosis
         new_params.fertility_rising_steepness = (p1.fertility_rising_steepness + p2.fertility_rising_steepness) / 2
         new_params.fertility_falling_steepness = (p1.fertility_falling_steepness + p2.fertility_falling_steepness) / 2
         new_params.contraception_abortion_use_rate = (p1.contraception_abortion_use_rate + p2.contraception_abortion_use_rate) / 2

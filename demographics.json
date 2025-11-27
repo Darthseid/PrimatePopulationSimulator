@@ -49,8 +49,8 @@
     "is_hermaphrodite": false,
     "contraception_abortion_use_rate": 0.55
   },
-  "bounty_human": {
-    "species_name": "bounty_humans",
+  "kaleidar": {
+    "species_name": "kaleidar",
     "coupling_rate": 0.3,
     "puberty_age_days": 4201,
     "menopause_age_days": 18627,
@@ -72,7 +72,8 @@
     "fertility_rising_steepness": 1.2,
     "fertility_falling_steepness": 0.5,
     "is_hermaphrodite": false,
-    "contraception_abortion_use_rate": 0.01
+    "contraception_abortion_use_rate": 0.01,
+    "is_dominant":  true
   },
   "chimpanzee": {
     "species_name": "chimpanzees",

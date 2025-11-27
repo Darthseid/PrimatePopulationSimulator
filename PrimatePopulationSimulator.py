@@ -12,7 +12,7 @@ from PopulationObjects import calculate_age_based_fertility
 from graphing import log_population_stats, display_population_pyramid, plot_population_history
 
 earth_year = 365.2422
-starting_population = 300
+starting_population = 200
 
 class PrimateSimulation:
     """
@@ -107,7 +107,7 @@ class PrimateSimulation:
         cycle = 1
         cycle_days_passed = 0
         cycle_length_in_years = self.cycle_days / earth_year
-        hybridization_type = "midpoint"
+        hybridization_type = "random"
 
         if self.cycle_days <= 0: # Safety check
             cycle_interval = 1
@@ -308,7 +308,22 @@ class PrimateSimulation:
 
                     if father:
                         is_hybrid = mother.species_name != father.species_name
+                        birth_aborted = False
                         child_params = random.choice([mother.params, father.params]) #Default and for random hybrids.
+                        if is_hybrid:
+                            mom_dom = mother.params.is_dominant
+                            dad_dom = father.params.is_dominant                        
+                            if mom_dom and dad_dom:
+                                # Two different dominant species = Non-viable
+                                birth_aborted = True
+                            elif mom_dom:
+                                child_params = mother.params
+                                is_hybrid = False # Treated as pure for logic
+                            elif dad_dom:
+                                child_params = father.params
+                                is_hybrid = False # Treated as pure for logic
+
+                        if birth_aborted: continue
                         if hybridization_type == "lineal":  # Sons follow father's species, daughters follow mother's species.
                             sex_ratio_at_birth_chance = random.choice([mother.params.sex_ratio_at_birth, father.params.sex_ratio_at_birth])
                             if random.random() <= sex_ratio_at_birth_chance:
@@ -434,9 +449,8 @@ class PrimateSimulation:
                     death_counter += 1
                     if p.union: p.union.remove_member(p)
 
-
-                total_births += birth_counter
-                total_deaths += death_counter
+            total_births += birth_counter
+            total_deaths += death_counter
             
             self.population = final_population
 
@@ -507,9 +521,9 @@ class PrimateSimulation:
         plot_population_history(self.history, self.current_day)
       
 if __name__ == "__main__":
-    species_names = ["bounty_human", "satyr", "usagimimi"]
-    sim_locale = Locale.from_json("locales.json", "amazonas")
+    species_names = ["modern_human", "kaleidar"]
+    sim_locale = Locale.from_json("locales.json", "great_dismal_swamp")
     #simulation = PrimateSimulation(params=sim_params, locale=sim_locale, scenario_name="bounty_mutiny")
     simulation = PrimateSimulation(species_names, sim_locale) # For a random start
-    simulation.run_simulation(num_years=75.0)
+    simulation.run_simulation(num_years=99.0)
 
