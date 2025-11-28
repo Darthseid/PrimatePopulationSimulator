@@ -48,15 +48,14 @@ class PrimateSimulation:
                     raise ValueError(f"Scenario '{scenario_name}' not found in scenarios.json")
                 
                 scenario_data = scenarios[scenario_name]["population"]
-                for primate_data in scenario_data:
-                    is_female = primate_data["is_female"]
-                    
+                for primate_data in scenario_data:    
+                    species_name = primate_data["species_name"]
                     primate = Primate(
-                        species_name=primate_data["species_name"],
-                        is_female=is_female,
+                        species_name=species_name,
+                        is_female=primate_data["is_female"],
                         age_days=primate_data["age_days"], # Primate __init__ will handle conversion
                         is_initially_fertile=primate_data["is_initially_fertile"],
-                        params=self.params # Pass self.params
+                        params=self.species_params[species_name] # If a species is missing, this will raise a KeyError
                     )
                     
                     self.population.append(primate)
@@ -107,7 +106,7 @@ class PrimateSimulation:
         cycle = 1
         cycle_days_passed = 0
         cycle_length_in_years = self.cycle_days / earth_year
-        hybridization_type = "random"
+        hybridization_type = "lineal"
 
         if self.cycle_days <= 0: # Safety check
             cycle_interval = 1
@@ -521,9 +520,8 @@ class PrimateSimulation:
         plot_population_history(self.history, self.current_day)
       
 if __name__ == "__main__":
-    species_names = ["modern_human", "kaleidar"]
-    sim_locale = Locale.from_json("locales.json", "great_dismal_swamp")
-    #simulation = PrimateSimulation(params=sim_params, locale=sim_locale, scenario_name="bounty_mutiny")
-    simulation = PrimateSimulation(species_names, sim_locale) # For a random start
-    simulation.run_simulation(num_years=99.0)
+    sim_locale = Locale.from_json("locales.json", "pampas")   
+    starting_species = ["modern_human", "usagimimi"]
+    simulation = PrimateSimulation(starting_species, sim_locale, "generation_ship")  # Load multiple species   
+    simulation.run_simulation(num_years=100.0) # Run the specific scenario
 
