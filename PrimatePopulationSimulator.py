@@ -6,13 +6,13 @@ import numpy as np
 import time
 from typing import List, Optional
 
-from PopulationObjects import Primate, Locale, convert_years_to_string, find_union_for_primate
+from PopulationObjects import Primate, Locale, convert_years_to_string, find_union_for_primate, Disaster
 from PopulationObjects import SimulationParameters
 from PopulationObjects import calculate_age_based_fertility
 from graphing import log_population_stats, display_population_pyramid, plot_population_history
 
 earth_year = 365.2422
-starting_population = 200
+starting_population = 500
 
 class PrimateSimulation:
     """
@@ -27,6 +27,8 @@ class PrimateSimulation:
         self.population: list[Primate] = []
         self.current_day = 0
         self.history = []
+
+        self.disasters = Disaster.from_json("disasters.json")
 
         self.cycle_days = min(params.interbirth_interval_days for params in self.species_params.values())       
         print(f"Locale: {self.locale.name} ({self.locale.biome_type})")
@@ -106,7 +108,7 @@ class PrimateSimulation:
         cycle = 1
         cycle_days_passed = 0
         cycle_length_in_years = self.cycle_days / earth_year
-        hybridization_type = "lineal"
+        hybridization_type = "random"
 
         if self.cycle_days <= 0: # Safety check
             cycle_interval = 1
@@ -129,6 +131,17 @@ class PrimateSimulation:
             male_count = 0
             fertile_male_count = 0
             fertile_female_count = 0
+
+            active_disasters = []
+
+            for disaster in self.disasters:
+                if disaster.try_trigger(self.current_day, self.cycle_days, len(self.population)):
+                    print(f"*** DISASTER TRIGGERED: {disaster.name} ***")
+                if disaster.is_active:
+                    if disaster.check_end(self.current_day):
+                        print(f"*** DISASTER ENDED: {disaster.name} ***")
+                    else:
+                        active_disasters.append(disaster)
 
             for primate in self.population:
                 if primate.params.ages_backward:
@@ -338,11 +351,13 @@ class PrimateSimulation:
                     adjusted_infant_mortality /= mother.params.genetic_diversity
                     if is_hybrid and father:
                        adjusted_infant_mortality /= father.params.genetic_diversity
-
+                    for disaster in active_disasters:
+                        if disaster.name == "Plague":
+                            adjusted_infant_mortality += 0.1 
                     for _ in range(num_births):
                         if random.random() > adjusted_infant_mortality / genetic_adjuster:
                             hybrid_sterile_chance = child_params.sterile_chance
-                            hybrid_sterile_boost = 0.2
+                            hybrid_sterile_boost = 0.02
                             if hybridization_type == "lineal":
                                 is_female_child = True if mother.params == child_params else False
                             else: 
@@ -388,6 +403,9 @@ class PrimateSimulation:
                     # Calculate adjusted mortality for this specific primate
                     adult_mortality = primate.params.adult_mortality_rate * cycle_length_in_years
                     adjusted_adult_mortality = adult_mortality * (1.0 + (1.0 - genetic_adjuster)) ** 1.59
+                    for disaster in active_disasters:
+                        if disaster.name == "Plague":
+                            adjusted_adult_mortality += 0.1 
                     if primate.age_years > 0.5 and random.random() < adjusted_adult_mortality:
                         died = True   
                 
@@ -521,7 +539,7 @@ class PrimateSimulation:
       
 if __name__ == "__main__":
     sim_locale = Locale.from_json("locales.json", "pampas")   
-    starting_species = ["modern_human", "usagimimi"]
-    simulation = PrimateSimulation(starting_species, sim_locale, "generation_ship")  # Load multiple species   
-    simulation.run_simulation(num_years=100.0) # Run the specific scenario
+    starting_species = ["modern_human"]
+    simulation = PrimateSimulation(starting_species, sim_locale)  # Load multiple species   
+    simulation.run_simulation(num_years=120.0) # Run the specific scenario
 

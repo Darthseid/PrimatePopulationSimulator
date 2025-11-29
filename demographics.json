@@ -553,7 +553,7 @@
     "contraception_abortion_use_rate": 0.55
   },
   "satyr": {
-    "species_name": "Satyrs",
+    "species_name": "satyrs",
     "puberty_age_days": 2405,
     "menopause_age_days": 15764,
     "lifespan_days": 15764,

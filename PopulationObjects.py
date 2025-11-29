@@ -170,6 +170,7 @@ class SimulationParameters:
                 
         new_params.is_hermaphrodite = False
         new_params.is_sequential_species = False
+        new_params.is_dominant = random.choice([p1.is_dominant, p2.is_dominant]) # This normally should not be inherited, but it throws an error otherwise.
         new_params.ages_backward = random.choice([p1.ages_backward, p2.ages_backward]) # 2. Booleans (Midpoint Rules)
               
         new_params.puberty_age_days = (p1.puberty_age_days + p2.puberty_age_days) / 2
@@ -392,3 +393,66 @@ def find_union_for_primate(primate: Primate, eligible_pool: Set[Primate], marria
             new_union.add_member(best_partner)  # If none, form a new one
             return
 
+class Disaster:
+    def __init__(self, name, is_possible, trigger_chance, duration_cycles):
+        self.name = name
+        self.is_possible = is_possible
+        self.trigger_chance = trigger_chance
+        self.duration_cycles = duration_cycles
+
+        self.is_active = False
+        self.end_day = None
+        self.has_triggered = False   # Permanently disables retriggering after first use
+
+    @classmethod
+    def from_json(cls, json_path: str):
+        try:
+            with open(json_path, 'r') as f:
+                data = json.load(f)
+
+            disasters = []
+            for name, d_data in data.items():
+                disasters.append(cls(
+                    name=name,
+                    is_possible=d_data.get("is_possible", True),
+                    trigger_chance=d_data.get("trigger_chance", 0.0),
+                    duration_cycles=d_data.get("duration_cycles", 1),
+                ))
+
+            return disasters
+
+        except FileNotFoundError:
+            print("Warning: disasters.json not found.")
+            return []
+        except json.JSONDecodeError:
+            print("Warning: Invalid JSON in disasters.json.")
+            return []
+
+    def try_trigger(self, current_day, days_per_cycle, pop_size):
+        """Attempt to trigger once. If triggered, lasts duration_cycles and can't happen again."""
+        if not self.is_possible:
+            return False
+
+        if self.is_active:
+            return False  # already running
+
+        if self.has_triggered:
+            return False  # already used, cannot retrigger in this simulation
+
+        if pop_size < 500:
+            return False  # threshold check
+
+        if random.random() < self.trigger_chance:
+            self.is_active = True
+            self.has_triggered = True
+            self.end_day = current_day + (self.duration_cycles * days_per_cycle)
+            return True
+
+        return False
+
+    def check_end(self, current_day):
+        """End the disaster if its timer has expired."""
+        if self.is_active and self.end_day is not None and current_day >= self.end_day:
+            self.is_active = False
+            return True
+        return False
