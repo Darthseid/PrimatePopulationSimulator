@@ -12,7 +12,7 @@ from PopulationObjects import calculate_age_based_fertility
 from graphing import log_population_stats, display_population_pyramid, plot_population_history
 
 earth_year = 365.2422
-starting_population = 500
+starting_population = 1000
 
 class PrimateSimulation:
     """
@@ -351,13 +351,16 @@ class PrimateSimulation:
                     adjusted_infant_mortality /= mother.params.genetic_diversity
                     if is_hybrid and father:
                        adjusted_infant_mortality /= father.params.genetic_diversity
+                    pollution_sterility = 0.0
                     for disaster in active_disasters:
                         if disaster.name == "Plague":
-                            adjusted_infant_mortality += 0.1 
+                            adjusted_infant_mortality += 0.2
+                        if disaster.name == "Pollution":
+                          pollution_sterility += 0.7
                     for _ in range(num_births):
                         if random.random() > adjusted_infant_mortality / genetic_adjuster:
-                            hybrid_sterile_chance = child_params.sterile_chance
-                            hybrid_sterile_boost = 0.02
+                            hybrid_sterile_chance = child_params.sterile_chance + pollution_sterility
+                            hybrid_sterile_boost = 0.2
                             if hybridization_type == "lineal":
                                 is_female_child = True if mother.params == child_params else False
                             else: 
@@ -405,7 +408,7 @@ class PrimateSimulation:
                     adjusted_adult_mortality = adult_mortality * (1.0 + (1.0 - genetic_adjuster)) ** 1.59
                     for disaster in active_disasters:
                         if disaster.name == "Plague":
-                            adjusted_adult_mortality += 0.1 
+                            adjusted_adult_mortality += 0.2
                     if primate.age_years > 0.5 and random.random() < adjusted_adult_mortality:
                         died = True   
                 
@@ -426,11 +429,14 @@ class PrimateSimulation:
             
             self.population = final_survivors + newborns # 6. Combine survivors and newborns
 
-            # --- 5. FEEDING PHASE ---
-            avail_meat = self.locale.carnivore_calories * self.cycle_days
-            avail_veg = self.locale.herbivore_calories * self.cycle_days
-            avail_grass = self.locale.ruminant_calories * self.cycle_days
-            avail_water = self.locale.water_availability_m3 * self.cycle_days
+            famine_modifier = 1.0
+            for disaster in active_disasters:
+                        if disaster.name == "Famine":
+                            famine_modifier /= 3.0
+            avail_meat = self.locale.carnivore_calories * self.cycle_days * famine_modifier
+            avail_veg = self.locale.herbivore_calories * self.cycle_days * famine_modifier
+            avail_grass = self.locale.ruminant_calories * self.cycle_days * famine_modifier
+            avail_water = self.locale.water_availability_m3 * self.cycle_days 
             starvation_counter = 0
             
             final_population = []
@@ -538,8 +544,8 @@ class PrimateSimulation:
         plot_population_history(self.history, self.current_day)
       
 if __name__ == "__main__":
-    sim_locale = Locale.from_json("locales.json", "pampas")   
-    starting_species = ["modern_human"]
+    sim_locale = Locale.from_json("locales.json", "mojave_desert")   
+    starting_species = ["goblin"]
     simulation = PrimateSimulation(starting_species, sim_locale)  # Load multiple species   
-    simulation.run_simulation(num_years=120.0) # Run the specific scenario
+    simulation.run_simulation(num_years=40.0) # Run the specific scenario
 

@@ -1,21 +1,21 @@
 {
   "Plague": {
-    "trigger_chance": 0.63,
+    "trigger_chance": 0.01,
     "duration_cycles": 5,
     "is_possible": true
   },
   "Famine": {
-    "trigger_chance": 0.05,
+    "trigger_chance": 0.007,
     "duration_cycles": 12,
     "is_possible": true
   },
   "Pollution": {
-    "trigger_chance": 0.01,
+    "trigger_chance": 0.02,
     "duration_cycles": 8,
     "is_possible": true
   },
   "Warfare": {
-    "trigger_chance": 0.07,
+    "trigger_chance": 0.009,
     "duration_cycles": 1,
     "is_possible": true
   }
