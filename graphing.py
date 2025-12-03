@@ -1,6 +1,9 @@
 ﻿import matplotlib.pyplot as plt
 import numpy as np
 import math
+import random
+from PopulationObjects import Primate, Union
+from typing import List
 
 earth_year = 365.2422
 
@@ -155,3 +158,59 @@ def plot_population_history(history, current_day):
         
         print("\nDisplaying population graph...")
         plt.show()
+
+
+def resolve_warfare(combatants: List[Primate]) -> List[Primate]:
+        """
+        Handles the Warfare disaster logic.
+        Pairs off eligible males, kills half, transfers females to winners.
+        Returns list of survivors.
+        """
+        print("   -> WARFARE BREAKS OUT (Battle Royale)")
+        random.shuffle(combatants)
+        
+        survivors = []
+        casualties_count = 0
+        
+        limit = len(combatants)
+        if limit % 2 != 0:  # If odd number of combatants, the last one survives automatically (bye round)
+            survivors.append(combatants[-1])
+            limit -= 1
+               
+        for i in range(0, limit, 2): # Pair off and fight
+            m1 = combatants[i]
+            m2 = combatants[i+1]
+            
+            # Random winner
+            if random.random() < 0.5:
+                winner, loser = m1, m2
+            else:
+                winner, loser = m2, m1
+            
+            survivors.append(winner)
+            casualties_count += 1
+            
+            
+            if loser.union: # --- SPOILS OF WAR ---
+                females_to_take = [m for m in loser.union.members if m is not loser and (m.is_female or m.params.is_hermaphrodite)]              
+                if females_to_take:                    
+                    if winner.union is None:  # Ensure winner has a union
+                        m_type = "polygyny"
+                        req_size = len(females_to_take) + 1                                                             
+                        new_union = Union(marriage_type=m_type, max_size=req_size)
+                        new_union.add_member(winner)
+                                       
+                    needed = len(winner.union.members) + len(females_to_take)
+                    if winner.union.max_size < needed: # Check and expand winner's union capacity if needed
+                        winner.union.max_size = needed
+                    
+                    for f in females_to_take:
+                        loser.union.remove_member(f) # Remove from old
+                        winner.union.add_member(f)   # Add to new
+            
+            if loser.union:
+                loser.union.remove_member(loser)
+
+        print(f"     Combatants: {len(combatants)}")
+        print(f"     Casualties: {casualties_count}")
+        return survivors

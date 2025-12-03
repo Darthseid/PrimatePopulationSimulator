@@ -1,18 +1,17 @@
 ﻿import random
 import math
 import json
-from re import M
 import numpy as np
 import time
-from typing import List, Optional
 
 from PopulationObjects import Primate, Locale, convert_years_to_string, find_union_for_primate, Disaster
 from PopulationObjects import SimulationParameters
 from PopulationObjects import calculate_age_based_fertility
-from graphing import log_population_stats, display_population_pyramid, plot_population_history
+from graphing import log_population_stats, display_population_pyramid, plot_population_history, resolve_warfare
+from typing import List
 
 earth_year = 365.2422
-starting_population = 1000
+starting_population = 500
 
 class PrimateSimulation:
     """
@@ -142,6 +141,21 @@ class PrimateSimulation:
                         print(f"*** DISASTER ENDED: {disaster.name} ***")
                     else:
                         active_disasters.append(disaster)
+            for disaster in active_disasters:
+                if disaster.name == "Warfare":                     
+                        combatants = [p for p in self.population if   # Identify combatants: Males, Post-Puberty, Not-Elderly
+                                      not (p.is_female) and 
+                                      (p.age_years * earth_year >= p.params.puberty_age_days) and 
+                                      (p.age_years * earth_year < p.params.lifespan_days)]
+                        
+                        surviving_males = resolve_warfare(combatants)
+                 
+                        war_deaths = len(combatants) - len(surviving_males)
+                        death_counter += war_deaths
+                        
+                        combatant_set = set(combatants)
+                        non_combatants = [p for p in self.population if p not in combatant_set]
+                        self.population = non_combatants + surviving_males # Reconstruct population: Non-combatants + Survivors
 
             for primate in self.population:
                 if primate.params.ages_backward:
@@ -545,7 +559,7 @@ class PrimateSimulation:
       
 if __name__ == "__main__":
     sim_locale = Locale.from_json("locales.json", "mojave_desert")   
-    starting_species = ["goblin"]
+    starting_species = ["modern_human"]
     simulation = PrimateSimulation(starting_species, sim_locale)  # Load multiple species   
     simulation.run_simulation(num_years=40.0) # Run the specific scenario
 
