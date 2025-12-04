@@ -131,6 +131,10 @@ class PrimateSimulation:
             fertile_male_count = 0
             fertile_female_count = 0
 
+            # --- CALCULATE SEASON ---
+            day_of_year = self.current_day % earth_year
+            is_mating_season = (day_of_year < 30) or (day_of_year > (earth_year - 30)) or self.cycle_days >= 335 #December 2 to January 31.
+
             active_disasters = []
 
             for disaster in self.disasters:
@@ -206,6 +210,8 @@ class PrimateSimulation:
                     continue  # Primate died, don't add to new population                
 
                 new_population.append(primate)
+
+
                 
                 if primate.is_female:
                     female_count += 1
@@ -234,9 +240,17 @@ class PrimateSimulation:
                 inhabitants_per_sq_km = len(new_population) / self.locale.area_km2
                 density_penalty = min(1, 100 / inhabitants_per_sq_km) # That way below 100/km² has no advantage.
                 genetic_adjuster *= density_penalty
+
+            coupling_population = new_population if is_mating_season else [p for p in new_population if p.params.seasonal_mater is False] # Skip seasonal maters during off-season
+            if not is_mating_season: # --- SEASONAL UNCOUPLING ---
+                coupled_seasonal = [p for p in new_population 
+                                    if p.union is not None and p.params.seasonal_mater]
+                for p in coupled_seasonal:
+                    if p.union:
+                        p.union.remove_member(p)
        
             eligible_for_coupling = [
-                p for p in new_population 
+                p for p in coupling_population
                 if p.union is None and 
                    p.is_fertile and 
                    p.age_years * earth_year >= primate.params.puberty_age_days # Get all uncoupled, fertile individuals who are of age
@@ -247,15 +261,13 @@ class PrimateSimulation:
                     if not (p.is_female and p.age_years * earth_year >= primate.params.menopause_age_days) #This excludes post-menopausal females.
                 }
                 partner_pool_list = list(partner_pool)
-                coupled_primates = [p for p in new_population if p.union is not None]         
+                coupled_primates = [p for p in coupling_population if p.union is not None]         
                 for primate in eligible_for_coupling:
-                    if primate.union is not None:
-                        continue # Already coupled in this loop
-                                        
-                    if primate.is_female and primate.age_years * earth_year >= primate.params.menopause_age_days:
-                        continue # Skip if post-menopausal female
                         
                     if not (random.random() < marriage_chance):
+                        continue
+
+                    if primate.union is not None:
                         continue
                         
                     sample_size = min(len(partner_pool), 20) #Limit sample size for performance
@@ -559,7 +571,7 @@ class PrimateSimulation:
       
 if __name__ == "__main__":
     sim_locale = Locale.from_json("locales.json", "mojave_desert")   
-    starting_species = ["modern_human"]
+    starting_species = ["homo_naledi"]
     simulation = PrimateSimulation(starting_species, sim_locale)  # Load multiple species   
-    simulation.run_simulation(num_years=40.0) # Run the specific scenario
+    simulation.run_simulation(num_years=75.0) # Run the specific scenario
 

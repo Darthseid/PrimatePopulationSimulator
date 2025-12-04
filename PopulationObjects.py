@@ -120,6 +120,7 @@ class SimulationParameters:
         self.is_sequential_species = params.get("is_sequential_species", False)
         self.ages_backward = params.get("ages_backward", False) # --- ADDED ---
         self.is_dominant = params.get("is_dominant", False) #Is dominant means that this species can only propagate itself.
+        self.seasonal_mater = params.get("seasonal_mater", False) #This means that the species has mating cycles.
         
         self.infant_mortality_rate = params["infant_mortality_rate"]
         self.maternal_mortality_rate = params["maternal_mortality_rate"]
@@ -171,6 +172,7 @@ class SimulationParameters:
         new_params.is_hermaphrodite = False
         new_params.is_sequential_species = False
         new_params.is_dominant = random.choice([p1.is_dominant, p2.is_dominant]) # This normally should not be inherited, but it throws an error otherwise.
+        new_params.is_dominant = random.choice([p1.seasonal_mater, p2.seasonal_mater])
         new_params.ages_backward = random.choice([p1.ages_backward, p2.ages_backward]) # 2. Booleans (Midpoint Rules)
               
         new_params.puberty_age_days = (p1.puberty_age_days + p2.puberty_age_days) / 2
