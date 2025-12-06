@@ -11,7 +11,7 @@ from graphing import log_population_stats, display_population_pyramid, plot_popu
 from typing import List
 
 earth_year = 365.2422
-starting_population = 500
+starting_population = 400
 
 class PrimateSimulation:
     """
@@ -107,7 +107,7 @@ class PrimateSimulation:
         cycle = 1
         cycle_days_passed = 0
         cycle_length_in_years = self.cycle_days / earth_year
-        hybridization_type = "random"
+        hybridization_type = "lineal"
 
         if self.cycle_days <= 0: # Safety check
             cycle_interval = 1
@@ -242,7 +242,7 @@ class PrimateSimulation:
                 genetic_adjuster *= density_penalty
 
             coupling_population = new_population if is_mating_season else [p for p in new_population if p.params.seasonal_mater is False] # Skip seasonal maters during off-season
-            if not is_mating_season: # --- SEASONAL UNCOUPLING ---
+            if not is_mating_season or self.cycle_days >= 335: # Seasonal maters form new couples every season.
                 coupled_seasonal = [p for p in new_population 
                                     if p.union is not None and p.params.seasonal_mater]
                 for p in coupled_seasonal:
@@ -386,7 +386,7 @@ class PrimateSimulation:
                     for _ in range(num_births):
                         if random.random() > adjusted_infant_mortality / genetic_adjuster:
                             hybrid_sterile_chance = child_params.sterile_chance + pollution_sterility
-                            hybrid_sterile_boost = 0.2
+                            hybrid_sterile_boost = 0.0
                             if hybridization_type == "lineal":
                                 is_female_child = True if mother.params == child_params else False
                             else: 
@@ -571,7 +571,7 @@ class PrimateSimulation:
       
 if __name__ == "__main__":
     sim_locale = Locale.from_json("locales.json", "mojave_desert")   
-    starting_species = ["homo_naledi"]
+    starting_species = ["anthousa", "modern_human"]
     simulation = PrimateSimulation(starting_species, sim_locale)  # Load multiple species   
-    simulation.run_simulation(num_years=75.0) # Run the specific scenario
+    simulation.run_simulation(num_years=400.0) # Run the specific scenario
 
