@@ -76,8 +76,8 @@
     "biome_type": "Alpine Desert / Ice",
     "area_km2": 1148.0,
     "water_availability_m3": 100000.0,
-    "carnivore_calories": 1880,
-    "herbivore_calories": 9000,
-    "ruminant_calories": 19000
+    "carnivore_calories": 18800,
+    "herbivore_calories": 90000,
+    "ruminant_calories": 190000
   }
 }

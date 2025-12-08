@@ -172,7 +172,7 @@ class SimulationParameters:
         new_params.is_hermaphrodite = False
         new_params.is_sequential_species = False
         new_params.is_dominant = random.choice([p1.is_dominant, p2.is_dominant]) # This normally should not be inherited, but it throws an error otherwise.
-        new_params.is_dominant = random.choice([p1.seasonal_mater, p2.seasonal_mater])
+        new_params.seasonal_mater = random.choice([p1.seasonal_mater, p2.seasonal_mater])
         new_params.ages_backward = random.choice([p1.ages_backward, p2.ages_backward]) # 2. Booleans (Midpoint Rules)
               
         new_params.puberty_age_days = (p1.puberty_age_days + p2.puberty_age_days) / 2

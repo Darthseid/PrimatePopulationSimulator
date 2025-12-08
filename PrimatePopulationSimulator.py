@@ -11,7 +11,7 @@ from graphing import log_population_stats, display_population_pyramid, plot_popu
 from typing import List
 
 earth_year = 365.2422
-starting_population = 400
+starting_population = 3000
 
 class PrimateSimulation:
     """
@@ -130,6 +130,7 @@ class PrimateSimulation:
             male_count = 0
             fertile_male_count = 0
             fertile_female_count = 0
+            piglet_calories = 0
 
             # --- CALCULATE SEASON ---
             day_of_year = self.current_day % earth_year
@@ -386,7 +387,7 @@ class PrimateSimulation:
                     for _ in range(num_births):
                         if random.random() > adjusted_infant_mortality / genetic_adjuster:
                             hybrid_sterile_chance = child_params.sterile_chance + pollution_sterility
-                            hybrid_sterile_boost = 0.0
+                            hybrid_sterile_boost = 0.2
                             if hybridization_type == "lineal":
                                 is_female_child = True if mother.params == child_params else False
                             else: 
@@ -419,6 +420,8 @@ class PrimateSimulation:
                                     is_initially_fertile=random.random() > mother.params.sterile_chance
                                 )
                                 newborns.append(respawned_male) 
+                            if mother.params.species_name == "Pigfolk" or father.params.species_name == "Pigfolk":
+                                piglet_calories += 1000 #There dead infants are actually piglets that others can eat.
 
                     # Reset breeding timer
                     mother.next_breeding_day = self.current_day + mother.params.interbirth_interval_days         
@@ -459,11 +462,10 @@ class PrimateSimulation:
             for disaster in active_disasters:
                         if disaster.name == "Famine":
                             famine_modifier /= 3.0
-            avail_meat = self.locale.carnivore_calories * self.cycle_days * famine_modifier
+            avail_meat = self.locale.carnivore_calories * self.cycle_days * famine_modifier + piglet_calories
             avail_veg = self.locale.herbivore_calories * self.cycle_days * famine_modifier
             avail_grass = self.locale.ruminant_calories * self.cycle_days * famine_modifier
             avail_water = self.locale.water_availability_m3 * self.cycle_days 
-            starvation_counter = 0
             
             final_population = []
             
@@ -487,14 +489,20 @@ class PrimateSimulation:
                     if avail_grass >= step_need:
                         avail_grass -= step_need; fed = True
                 elif diet == "omnivore":
-                    if avail_meat >= step_need:
+                    if avail_veg >= step_need:
+                        avail_veg -= step_need; fed = True
+                    elif avail_meat >= step_need:
                         avail_meat -= step_need; fed = True
-                    elif avail_veg >= step_need:
-                        avail_veg -= step_need; fed = True              
+                elif diet == "everything":
+                    if avail_grass >= step_need:
+                        avail_grass -= step_need; fed = True
+                    if avail_veg >= step_need:
+                        avail_veg -= step_need; fed = True
+                    elif avail_meat >= step_need:
+                        avail_meat -= step_need; fed = True    
                 if fed:
                     final_population.append(p)
                 else:
-                    starvation_counter += 1
                     death_counter += 1
                     if p.union: p.union.remove_member(p)
 
@@ -570,8 +578,8 @@ class PrimateSimulation:
         plot_population_history(self.history, self.current_day)
       
 if __name__ == "__main__":
-    sim_locale = Locale.from_json("locales.json", "mojave_desert")   
-    starting_species = ["anthousa", "modern_human"]
+    sim_locale = Locale.from_json("locales.json", "pampas")   
+    starting_species = ["homo_naledi", "shikamimi", "butamimi"]
     simulation = PrimateSimulation(starting_species, sim_locale)  # Load multiple species   
-    simulation.run_simulation(num_years=400.0) # Run the specific scenario
+    simulation.run_simulation(num_years=150.0) # Run the specific scenario
 
