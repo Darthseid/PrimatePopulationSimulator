@@ -11,7 +11,7 @@ from graphing import log_population_stats, display_population_pyramid, plot_popu
 from typing import List
 
 earth_year = 365.2422
-starting_population = 3000
+starting_population = 900
 
 class PrimateSimulation:
     """
@@ -107,7 +107,7 @@ class PrimateSimulation:
         cycle = 1
         cycle_days_passed = 0
         cycle_length_in_years = self.cycle_days / earth_year
-        hybridization_type = "lineal"
+        hybridization_type = "random"
 
         if self.cycle_days <= 0: # Safety check
             cycle_interval = 1
@@ -238,7 +238,8 @@ class PrimateSimulation:
             genetic_adjuster = min(1.0, breeding_population / 50.0) #This is the stand-in for incest. If the breeding population is low, mortality goes up.
 
             if self.locale.area_km2 > 0: #Divide by Zero safety check.
-                inhabitants_per_sq_km = len(new_population) / self.locale.area_km2
+                non_merfolk_population = [p for p in new_population if p.params.species_name != "Merfolk"] #Mermaids & mermen live in the sea, not on land.
+                inhabitants_per_sq_km = len(non_merfolk_population) / self.locale.area_km2 if len(non_merfolk_population) > 0 else 1 # Avoid zero population with all merfolk
                 density_penalty = min(1, 100 / inhabitants_per_sq_km) # That way below 100/km² has no advantage.
                 genetic_adjuster *= density_penalty
 
@@ -388,7 +389,7 @@ class PrimateSimulation:
                         if random.random() > adjusted_infant_mortality / genetic_adjuster:
                             hybrid_sterile_chance = child_params.sterile_chance + pollution_sterility
                             hybrid_sterile_boost = 0.2
-                            if hybridization_type == "lineal":
+                            if hybridization_type == "lineal" and is_hybrid:
                                 is_female_child = True if mother.params == child_params else False
                             else: 
                                 is_female_child = True if child_params.is_hermaphrodite else (random.random() < child_params.sex_ratio_at_birth)
@@ -466,7 +467,6 @@ class PrimateSimulation:
             avail_veg = self.locale.herbivore_calories * self.cycle_days * famine_modifier
             avail_grass = self.locale.ruminant_calories * self.cycle_days * famine_modifier
             avail_water = self.locale.water_availability_m3 * self.cycle_days 
-            
             final_population = []
             
             current_living = [p for p in self.population]
@@ -500,6 +500,9 @@ class PrimateSimulation:
                         avail_veg -= step_need; fed = True
                     elif avail_meat >= step_need:
                         avail_meat -= step_need; fed = True    
+                if p.params.species_name == "Merfolk":
+                    avail_water -= self.cycle_days
+                    fed = avail_water >= 0 #merfolk need food & water.
                 if fed:
                     final_population.append(p)
                 else:
@@ -578,8 +581,8 @@ class PrimateSimulation:
         plot_population_history(self.history, self.current_day)
       
 if __name__ == "__main__":
-    sim_locale = Locale.from_json("locales.json", "pampas")   
-    starting_species = ["homo_naledi", "shikamimi", "butamimi"]
+    sim_locale = Locale.from_json("locales.json", "mojave_desert")   
+    starting_species = ["merfolk", "goblin"]
     simulation = PrimateSimulation(starting_species, sim_locale)  # Load multiple species   
-    simulation.run_simulation(num_years=150.0) # Run the specific scenario
+    simulation.run_simulation(num_years=100.0) # Run the specific scenario
 

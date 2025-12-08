@@ -3,7 +3,7 @@
     "name": "Nauru",
     "biome_type": "Tropical Island",
     "area_km2": 21.0,
-    "water_availability_m3": 10000.0,
+    "water_availability_m3": 100000.0,
     "carnivore_calories": 1e4,
     "herbivore_calories": 1e6,
     "ruminant_calories": 4.53e4
@@ -21,7 +21,7 @@
     "name": "The Mojave Desert",
     "biome_type": "Hot Desert",
     "area_km2": 124000.0,
-    "water_availability_m3": 100000.0,
+    "water_availability_m3": 1000.0,
     "carnivore_calories": 5e5,
     "herbivore_calories": 5e6,
     "ruminant_calories": 1.53e7
