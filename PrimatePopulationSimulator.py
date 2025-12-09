@@ -31,8 +31,6 @@ class PrimateSimulation:
 
         self.cycle_days = min(params.interbirth_interval_days for params in self.species_params.values())       
         print(f"Locale: {self.locale.name} ({self.locale.biome_type})")
-        print(f"Loaded species: {', '.join(species_names)}")
-
         self.create_initial_population(scenario_name)
 
     def create_initial_population(self, scenario_name: str = None):
@@ -49,6 +47,8 @@ class PrimateSimulation:
                     raise ValueError(f"Scenario '{scenario_name}' not found in scenarios.json")
                 
                 scenario_data = scenarios[scenario_name]["population"]
+                description = scenarios[scenario_name].get("description", "No description provided.")
+                print(f"Scenario Description: {description}")
                 for primate_data in scenario_data:    
                     species_name = primate_data["species_name"]
                     primate = Primate(
@@ -200,6 +200,7 @@ class PrimateSimulation:
                      # --- NEW RESPAWN LOGIC (DOUBLES) ---
                     if primate.params.species_name == "Doubles" and primate.is_female:
                         respawned_male = Primate(
+                            species_name="Doubles",
                             params=primate.params,
                             is_female=False,
                             age_days=4748, #Age 13 years
@@ -211,8 +212,6 @@ class PrimateSimulation:
                     continue  # Primate died, don't add to new population                
 
                 new_population.append(primate)
-
-
                 
                 if primate.is_female:
                     female_count += 1
@@ -279,7 +278,7 @@ class PrimateSimulation:
                             sampled_people = random.sample(coupled_primates, sample_size_unions)
                             unique_sampled_unions = list({p.union for p in sampled_people})
                             sample_unions = unique_sampled_unions[:sample_size] #This is all necessary to improve performance and to randomize spouses more.
-                    find_union_for_primate(primate, local_pool, "monogamy", sample_unions)
+                    find_union_for_primate(primate, local_pool, "polyandry", sample_unions)
 
             for mother in new_population:              
                 is_eligible = (
@@ -421,8 +420,9 @@ class PrimateSimulation:
                                     is_initially_fertile=random.random() > mother.params.sterile_chance
                                 )
                                 newborns.append(respawned_male) 
-                            if mother.params.species_name == "Pigfolk" or father.params.species_name == "Pigfolk":
-                                piglet_calories += 1000 #There dead infants are actually piglets that others can eat.
+                            if father: #safety check against asexual reproduction.
+                                if mother.params.species_name == "Pigfolk" or father.params.species_name == "Pigfolk":
+                                    piglet_calories += 1000 #There dead infants are actually piglets that others can eat.
 
                     # Reset breeding timer
                     mother.next_breeding_day = self.current_day + mother.params.interbirth_interval_days         
@@ -446,7 +446,8 @@ class PrimateSimulation:
                     death_counter += 1
                     if primate.params.species_name == "Doubles" and primate.is_female:
                         respawned_male = Primate(
-                            params=self.params, # Assuming self.params is available or use primate.params
+                            species_name = "Doubles",
+                            params=primate.params, # Assuming self.params is available or use primate.params
                             is_female=False,
                             age_days=4748, #Age 13 years
                             is_initially_fertile=random.random() > primate.params.sterile_chance 
@@ -578,11 +579,16 @@ class PrimateSimulation:
         print(f"\nSimulation Runtime: {runtime:.2f} seconds") # Add runtime calculation and display at the end
 
         display_population_pyramid(self.population, earth_year)
-        plot_population_history(self.history, self.current_day)
-      
+        plot_population_history(self.history, self.current_day)      
+
 if __name__ == "__main__":
-    sim_locale = Locale.from_json("locales.json", "mojave_desert")   
-    starting_species = ["merfolk", "goblin"]
-    simulation = PrimateSimulation(starting_species, sim_locale)  # Load multiple species   
-    simulation.run_simulation(num_years=100.0) # Run the specific scenario
+    # Load all species keys from demographics.json
+    with open("demographics.json", "r") as f:
+        demographics_data = json.load(f)
+    starting_species = list(demographics_data.keys()) #This is for simulations, otherwise manually enter the starting species.
+
+    #starting_species = ["modern_human"]
+    sim_locale = Locale.from_json("locales.json", "amazonas")   
+    simulation = PrimateSimulation(starting_species, sim_locale, "vault_68")  # Load multiple species   
+    simulation.run_simulation(num_years=500.0) # Run the specific scenario
 
