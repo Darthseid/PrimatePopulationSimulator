@@ -10,7 +10,7 @@ At the end of a run, the simulator provides a detailed statistical summary, a te
 
   * **Individual Agent-Based Modeling:** Tracks the discrete lifecycle of every single agent in the population.
   * **Deeply Configurable Demographics:** All species parameters are loaded from an external `demographics.json` file. This allows for easy modification and addition of new species profiles.
-  * **Included Species Profiles:** Comes with pre-built profiles for real-world primates (modern human, chimpanzee, gorilla) and fantasy humanoids (orc, goblin, elf, neanderthal).
+  * **Included Species Profiles:** Comes with pre-built profiles for real-world primates (modern human, chimpanzee, gorilla) and fantasy humanoids (orc, goblin, elf, neanderthal, widow).
   * **Complex Fertility Modeling:** Uses a double logistic function to model age-based fertility, simulating a fertility peak after puberty and a decline toward menopause.
   * **Detailed Mortality:** Simulates distinct mortality rates for infants, mothers (maternal mortality), and general adults, including an age-accelerated risk of death past the average lifespan.
   * **Genetic Diversity Penalties:** Includes a system to model the negative effects of a small breeding population (Ne), which can increase mortality rates when the population lacks genetic diversity.
@@ -24,7 +24,7 @@ At the end of a run, the simulator provides a detailed statistical summary, a te
 You must have Python installed, along with the `numpy` and `matplotlib` libraries. You can install them using pip:
 
 ```bash
-pip install numpy matplotlib
+pip install -r requirements.txt
 ```
 
 ### 2\. Running the Simulator
@@ -44,7 +44,7 @@ All configuration is done by editing plain text files or the main script's `__ma
   * `PrimatePopulationSimulator/demographics.json`
     This is the **primary configuration file** for all species data. You can edit any species profile or add your own. Key parameters include:
 
-  * `PrimatePopulationSimulator/Scenarios.json`
+  * `Scenarios.json`
     This file holds specific starting populations. You can add new scenarios here. Each agent is defined with a starting `age_days`, `is_female` status, and `is_initially_fertile` status.
 
   * `PrimatePopulationSimulator.py` (at the very bottom)
@@ -75,5 +75,5 @@ All configuration is done by editing plain text files or the main script's `__ma
         Comment out the line above and uncomment this one, changing `"bounty_mutiny"` to the name of your desired scenario from `Scenarios.json`:
 
         ```python
-        #simulation = PrimateSimulation(params=sim_params, scenario_name="bounty_mutiny")
+        simulation = PrimateSimulation(starting_species, sim_locale, "bounty_mutiny")
         ```

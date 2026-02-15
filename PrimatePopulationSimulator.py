@@ -40,11 +40,11 @@ class PrimateSimulation:
         if scenario_name:
             print(f"Loading population from scenario: {scenario_name}")
             try:
-                with open("scenarios.json", 'r') as f:
+                with open("Scenarios.json", 'r') as f:
                     scenarios = json.load(f)
                 
                 if scenario_name not in scenarios:
-                    raise ValueError(f"Scenario '{scenario_name}' not found in scenarios.json")
+                    raise ValueError(f"Scenario '{scenario_name}' not found in Scenarios.json")
                 
                 scenario_data = scenarios[scenario_name]["population"]
                 description = scenarios[scenario_name].get("description", "No description provided.")
@@ -63,9 +63,9 @@ class PrimateSimulation:
                 return
 
             except FileNotFoundError:
-                print("Error: scenarios.json not found. Falling back to random population.")
+                print("Error: Scenarios.json not found. Falling back to random population.")
             except (json.JSONDecodeError, KeyError, ValueError) as e:
-                print(f"Error reading scenarios.json: {e}. Falling back to random population.")
+                print(f"Error reading Scenarios.json: {e}. Falling back to random population.")
         
         self.create_random_population()
 
@@ -178,15 +178,24 @@ class PrimateSimulation:
                     if primate.age_days <= 0: # Death by old age for Merlins
                         died = True
                         total_OldAgeDeaths += 1
-                else: # Standard "old age" death check                   
-                    if primate.age_days > primate.params.lifespan_days:
+                else: # Standard "old age" death check
+                    if primate.is_female and primate.params.female_lifespan_days is not None:
+                        effective_lifespan_days = primate.params.female_lifespan_days
+                        lifespan_modifier = 1.0
+                    elif (not primate.is_female) and primate.params.male_lifespan_days is not None:
+                        effective_lifespan_days = primate.params.male_lifespan_days
+                        lifespan_modifier = 1.0
+                    else:
+                        effective_lifespan_days = primate.params.lifespan_days
+                        lifespan_modifier = 0.93 if not primate.is_female else 1.0
+
+                    if primate.age_days > effective_lifespan_days:
                         base_mortality = 0.0005
                         mortality_increase = 0.09
-                        lifespan_modifier = 0.93 if not primate.is_female else 1.0
-                        
-                        age_in_years = primate.age_years 
-                        lifespan_in_years = primate.params.lifespan_days / earth_year
-                        
+
+                        age_in_years = primate.age_years
+                        lifespan_in_years = max(1e-9, effective_lifespan_days / earth_year)
+
                         adjusted_age = (age_in_years / lifespan_modifier) * (age_in_years / lifespan_in_years)
                         factor = (base_mortality / mortality_increase) * math.exp(mortality_increase * adjusted_age) * (math.exp(mortality_increase) - 1)
                         mortality_rate = 1 - math.exp(-factor)

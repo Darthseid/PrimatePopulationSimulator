@@ -104,6 +104,8 @@ class SimulationParameters:
         self.puberty_age_days = params["puberty_age_days"]
         self.menopause_age_days = params["menopause_age_days"]
         self.lifespan_days = params["lifespan_days"] 
+        self.male_lifespan_days = params.get("male_lifespan_days")
+        self.female_lifespan_days = params.get("female_lifespan_days")
         
         self.coupling_rate = params["coupling_rate"] #This represents the chance of a primate being coupled with a mate per cycle.
         self.gestation_days = params["gestation_days"]
