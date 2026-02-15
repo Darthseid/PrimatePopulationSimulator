@@ -31,9 +31,9 @@
     "biome_type": "Arctic Tundra",
     "area_km2": 410000.0,
     "water_availability_m3": 50000000.0,
-    "carnivore_calories": 2.2e6,
-    "herbivore_calories": 1.2e6,
-    "ruminant_calories": 5.1e6
+    "carnivore_calories": 9.2e6,
+    "herbivore_calories": 6.2e6,
+    "ruminant_calories": 7.1e6
   },
   "amazonas": {
     "name": "Amazonas",

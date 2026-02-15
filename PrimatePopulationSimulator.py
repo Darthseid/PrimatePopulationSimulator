@@ -11,7 +11,7 @@ from graphing import log_population_stats, display_population_pyramid, plot_popu
 from typing import List
 
 earth_year = 365.2422
-starting_population = 900
+starting_population = 200
 
 class PrimateSimulation:
     """
@@ -27,7 +27,7 @@ class PrimateSimulation:
         self.current_day = 0
         self.history = []
 
-        self.disasters = Disaster.from_json("disasters.json")
+        self.disasters = Disaster.from_json("locales.json")
 
         self.cycle_days = min(params.interbirth_interval_days for params in self.species_params.values())       
         print(f"Locale: {self.locale.name} ({self.locale.biome_type})")
@@ -71,12 +71,11 @@ class PrimateSimulation:
 
     def create_random_population(self):
         print("Creating a randomized initial population.")
-        min_age = 0
         species_list = list(self.species_params.keys())
         for _ in range(starting_population): # Randomly pick a species        
             species_name = random.choice(species_list)
             params = self.species_params[species_name]
-            start_age = random.uniform(min_age, params.lifespan_days)
+            start_age = random.randrange(params.lifespan_days)
             is_female = True if params.is_hermaphrodite else (random.random() < params.sex_ratio_at_birth)
             if params.species_name == "sequents":
                 if start_age < 12783:
@@ -107,7 +106,7 @@ class PrimateSimulation:
         cycle = 1
         cycle_days_passed = 0
         cycle_length_in_years = self.cycle_days / earth_year
-        hybridization_type = "random"
+        hybridization_type = "lineal"
 
         if self.cycle_days <= 0: # Safety check
             cycle_interval = 1
@@ -168,7 +167,9 @@ class PrimateSimulation:
                 else:
                     primate.age_days += self.cycle_days # Age increases
                 
-                
+                Widow_multiplier = 1
+                if not primate.is_female and primate.params.species_name == "Widow":
+                    Widow_multiplier = 3
                 if primate.params.species_name == "sequents" and not primate.is_female and primate.age_years > (12783 / earth_year):
                     primate.is_female = True
                     primate.age_days = 5479 # 1b. Sequential hermaphrodite check
@@ -178,22 +179,27 @@ class PrimateSimulation:
                     if primate.age_days <= 0: # Death by old age for Merlins
                         died = True
                         total_OldAgeDeaths += 1
-                else: # Standard "old age" death check                   
-                    if primate.age_days > primate.params.lifespan_days:
-                        base_mortality = 0.0005
-                        mortality_increase = 0.09
-                        lifespan_modifier = 0.93 if not primate.is_female else 1.0
-                        
-                        age_in_years = primate.age_years 
-                        lifespan_in_years = primate.params.lifespan_days / earth_year
-                        
-                        adjusted_age = (age_in_years / lifespan_modifier) * (age_in_years / lifespan_in_years)
-                        factor = (base_mortality / mortality_increase) * math.exp(mortality_increase * adjusted_age) * (math.exp(mortality_increase) - 1)
-                        mortality_rate = 1 - math.exp(-factor)
+                else: # Standard "old age" death check
+                    
+                    HUMAN_STD_LIFESPAN = 87.0  # years # --- 1. DEFINE HUMAN BASELINE ---
+                    age_in_years = primate.age_years * Widow_multiplier
+                    species_lifespan_years = primate.params.lifespan_days / earth_year if primate.params.lifespan_days > 0 else 0.0        
+                    if species_lifespan_years <= 0:
+                        mortality_rate_per_cycle = 0.01
+                    else:
+                        aging_factor = HUMAN_STD_LIFESPAN / species_lifespan_years
+                        bio_age = age_in_years * aging_factor
+                        if primate.is_female:
+                            bio_age -= 4.5
+                        GOMPERTZ_A = 0.00005
+                        GOMPERTZ_B = 0.082
+                        hazard_rate_per_year = GOMPERTZ_A * math.exp(GOMPERTZ_B * bio_age)
+                        years_per_cycle = self.cycle_days / earth_year
+                        mortality_rate_per_cycle = 1.0 - math.exp(-hazard_rate_per_year * years_per_cycle)
 
-                        if random.random() < mortality_rate:
-                            died = True
-                            total_OldAgeDeaths += 1
+                    if random.random() < mortality_rate_per_cycle:
+                        died = True
+                        total_OldAgeDeaths += 1
                 
                 if died:
                     death_counter += 1
@@ -278,7 +284,7 @@ class PrimateSimulation:
                             sampled_people = random.sample(coupled_primates, sample_size_unions)
                             unique_sampled_unions = list({p.union for p in sampled_people})
                             sample_unions = unique_sampled_unions[:sample_size] #This is all necessary to improve performance and to randomize spouses more.
-                    find_union_for_primate(primate, local_pool, "polyandry", sample_unions)
+                    find_union_for_primate(primate, local_pool, "monogamy", sample_unions)
 
             for mother in new_population:              
                 is_eligible = (
@@ -573,13 +579,28 @@ class PrimateSimulation:
             print(sampled_unions) #Only unique unions printed due to set usage
         else:
             print("[] (No coupled individuals found)")
+
+         # Print oldest male and female primates
+        if self.population:
+            males = [p for p in self.population if not p.is_female]
+            females = [p for p in self.population if p.is_female]
+            if males:
+                oldest_male = max(males, key=lambda p: p.age_days)
+                print(f"Oldest Male Age: {oldest_male.age_years:.2f} years, Kids: {oldest_male.number_of_healthy_children}")
+            else:
+                print("Oldest Male: None")
+
+            if females:
+                oldest_female = max(females, key=lambda p: p.age_days)
+                print(f"Oldest Female:  {oldest_female.age_years:.2f} years, Kids: {oldest_female.number_of_healthy_children}")
+            else:
+                print("Oldest Female: None")
                
         end_time = time.time()
         runtime = end_time - start_time
         print(f"\nSimulation Runtime: {runtime:.2f} seconds") # Add runtime calculation and display at the end
-
         display_population_pyramid(self.population, earth_year)
-        plot_population_history(self.history, self.current_day)      
+        plot_population_history(self.history, self.current_day)
 
 if __name__ == "__main__":
     # Load all species keys from demographics.json
@@ -587,8 +608,8 @@ if __name__ == "__main__":
         demographics_data = json.load(f)
     starting_species = list(demographics_data.keys()) #This is for simulations, otherwise manually enter the starting species.
 
-    #starting_species = ["modern_human"]
-    sim_locale = Locale.from_json("locales.json", "amazonas")   
-    simulation = PrimateSimulation(starting_species, sim_locale, "vault_68")  # Load multiple species   
-    simulation.run_simulation(num_years=500.0) # Run the specific scenario
+    starting_species = ["widow"]
+    sim_locale = Locale.from_json("locales.json", "pampas")   
+    simulation = PrimateSimulation(starting_species, sim_locale)  # Load multiple species   
+    simulation.run_simulation(num_years=300.0) # Run the specific scenario
 
