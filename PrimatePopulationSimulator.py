@@ -101,6 +101,11 @@ class PrimateSimulation:
         total_births = 0
         total_deaths = 0
         total_OldAgeDeaths = 0
+        # Childless tracking
+        male_had_child = 0
+        male_childless = 0
+        female_had_child = 0
+        female_childless = 0
 
         total_days = num_years * earth_year
         cycle = 1
@@ -154,8 +159,23 @@ class PrimateSimulation:
                         
                         surviving_males = resolve_warfare(combatants)
                  
-                        war_deaths = len(combatants) - len(surviving_males)
+                        # Determine which combatants died and update childless/had_child counters
+                        killed_combatants = [p for p in combatants if p not in surviving_males]
+                        war_deaths = len(killed_combatants)
                         death_counter += war_deaths
+                        for killed in killed_combatants:
+                            # Only count if at or past puberty (combatants are filtered to be post-puberty already)
+                            if killed.age_years * earth_year >= killed.params.puberty_age_days:
+                                if killed.is_female:
+                                    if killed.number_of_healthy_children > 0:
+                                        female_had_child += 1
+                                    else:
+                                        female_childless += 1
+                                else:
+                                    if killed.number_of_healthy_children > 0:
+                                        male_had_child += 1
+                                    else:
+                                        male_childless += 1
                         
                         combatant_set = set(combatants)
                         non_combatants = [p for p in self.population if p not in combatant_set]
@@ -191,7 +211,7 @@ class PrimateSimulation:
                         bio_age = age_in_years * aging_factor
                         if primate.is_female:
                             bio_age -= 4.5
-                        GOMPERTZ_A = 0.00005
+                        GOMPERTZ_A = 0.0001
                         GOMPERTZ_B = 0.082
                         hazard_rate_per_year = GOMPERTZ_A * math.exp(GOMPERTZ_B * bio_age)
                         years_per_cycle = self.cycle_days / earth_year
@@ -203,6 +223,22 @@ class PrimateSimulation:
                 
                 if died:
                     death_counter += 1
+                    # Track childless/had_child for adults (ignore pre-pubescent deaths)
+                    try:
+                        is_adult = primate.age_years * earth_year >= primate.params.puberty_age_days
+                    except Exception:
+                        is_adult = False
+                    if is_adult:
+                        if primate.is_female:
+                            if primate.number_of_healthy_children > 0:
+                                female_had_child += 1
+                            else:
+                                female_childless += 1
+                        else:
+                            if primate.number_of_healthy_children > 0:
+                                male_had_child += 1
+                            else:
+                                male_childless += 1
                      # --- NEW RESPAWN LOGIC (DOUBLES) ---
                     if primate.params.species_name == "Doubles" and primate.is_female:
                         respawned_male = Primate(
@@ -450,6 +486,22 @@ class PrimateSimulation:
                 
                 if died:
                     death_counter += 1
+                    # Track childless/had_child for adult deaths (ignore pre-pubescent)
+                    try:
+                        is_adult = primate.age_years * earth_year >= primate.params.puberty_age_days
+                    except Exception:
+                        is_adult = False
+                    if is_adult:
+                        if primate.is_female:
+                            if primate.number_of_healthy_children > 0:
+                                female_had_child += 1
+                            else:
+                                female_childless += 1
+                        else:
+                            if primate.number_of_healthy_children > 0:
+                                male_had_child += 1
+                            else:
+                                male_childless += 1
                     if primate.params.species_name == "Doubles" and primate.is_female:
                         respawned_male = Primate(
                             species_name = "Doubles",
@@ -514,6 +566,22 @@ class PrimateSimulation:
                     final_population.append(p)
                 else:
                     death_counter += 1
+                    # Track childless/had_child for starvation deaths (ignore pre-pubescent)
+                    try:
+                        is_adult = p.age_years * earth_year >= p.params.puberty_age_days
+                    except Exception:
+                        is_adult = False
+                    if is_adult:
+                        if p.is_female:
+                            if p.number_of_healthy_children > 0:
+                                female_had_child += 1
+                            else:
+                                female_childless += 1
+                        else:
+                            if p.number_of_healthy_children > 0:
+                                male_had_child += 1
+                            else:
+                                male_childless += 1
                     if p.union: p.union.remove_member(p)
 
             total_births += birth_counter
@@ -580,6 +648,24 @@ class PrimateSimulation:
         else:
             print("[] (No coupled individuals found)")
 
+        # Print childless ratios
+        def ratio(had, childless):
+            denom = had + childless
+            return (childless / denom) if denom > 0 else None
+
+        male_childless_ratio = ratio(male_had_child, male_childless)
+        female_childless_ratio = ratio(female_had_child, female_childless)
+
+        if male_childless_ratio is None:
+            print("Male childless ratio: N/A (no adult male deaths recorded)")
+        else:
+            print(f"Male childless ratio: {male_childless_ratio:.2%} ({male_childless} childless / {male_had_child + male_childless} adult male deaths)")
+
+        if female_childless_ratio is None:
+            print("Female childless ratio: N/A (no adult female deaths recorded)")
+        else:
+            print(f"Female childless ratio: {female_childless_ratio:.2%} ({female_childless} childless / {female_had_child + female_childless} adult female deaths)")
+
          # Print oldest male and female primates
         if self.population:
             males = [p for p in self.population if not p.is_female]
@@ -611,5 +697,5 @@ if __name__ == "__main__":
     starting_species = ["widow"]
     sim_locale = Locale.from_json("locales.json", "pampas")   
     simulation = PrimateSimulation(starting_species, sim_locale)  # Load multiple species   
-    simulation.run_simulation(num_years=300.0) # Run the specific scenario
+    simulation.run_simulation(num_years=200.0) # Run the specific scenario
 
