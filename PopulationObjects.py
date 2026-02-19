@@ -121,6 +121,12 @@ class SimulationParameters:
         self.ages_backward = params.get("ages_backward", False) # --- ADDED ---
         self.is_dominant = params.get("is_dominant", False) #Is dominant means that this species can only propagate itself.
         self.seasonal_mater = params.get("seasonal_mater", False) #This means that the species has mating cycles.
+        self.has_widow_male_aging_multiplier = params.get("has_widow_male_aging_multiplier", False)
+        self.has_sequent_sex_transition = params.get("has_sequent_sex_transition", False)
+        self.has_double_female_respawn = params.get("has_double_female_respawn", False)
+        self.excluded_from_land_density = params.get("excluded_from_land_density", False)
+        self.requires_extra_water = params.get("requires_extra_water", False)
+        self.produces_piglet_calories = params.get("produces_piglet_calories", False)
         
         self.infant_mortality_rate = params["infant_mortality_rate"]
         self.maternal_mortality_rate = params["maternal_mortality_rate"]
@@ -174,6 +180,12 @@ class SimulationParameters:
         new_params.is_dominant = random.choice([p1.is_dominant, p2.is_dominant]) # This normally should not be inherited, but it throws an error otherwise.
         new_params.seasonal_mater = random.choice([p1.seasonal_mater, p2.seasonal_mater])
         new_params.ages_backward = random.choice([p1.ages_backward, p2.ages_backward]) # 2. Booleans (Midpoint Rules)
+        new_params.has_widow_male_aging_multiplier = random.choice([p1.has_widow_male_aging_multiplier, p2.has_widow_male_aging_multiplier])
+        new_params.has_sequent_sex_transition = random.choice([p1.has_sequent_sex_transition, p2.has_sequent_sex_transition])
+        new_params.has_double_female_respawn = random.choice([p1.has_double_female_respawn, p2.has_double_female_respawn])
+        new_params.excluded_from_land_density = random.choice([p1.excluded_from_land_density, p2.excluded_from_land_density])
+        new_params.requires_extra_water = random.choice([p1.requires_extra_water, p2.requires_extra_water])
+        new_params.produces_piglet_calories = random.choice([p1.produces_piglet_calories, p2.produces_piglet_calories])
               
         new_params.puberty_age_days = (p1.puberty_age_days + p2.puberty_age_days) / 2
         new_params.menopause_age_days = (p1.menopause_age_days + p2.menopause_age_days) / 2

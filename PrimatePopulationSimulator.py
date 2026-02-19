@@ -77,7 +77,7 @@ class PrimateSimulation:
             params = self.species_params[species_name]
             start_age = random.randrange(params.lifespan_days)
             is_female = True if params.is_hermaphrodite else (random.random() < params.sex_ratio_at_birth)
-            if params.species_name == "sequents":
+            if params.has_sequent_sex_transition:
                 if start_age < 12783:
                     is_female = False
                 else:
@@ -188,9 +188,9 @@ class PrimateSimulation:
                     primate.age_days += self.cycle_days # Age increases
                 
                 Widow_multiplier = 1
-                if not primate.is_female and primate.params.species_name == "Widow":
+                if not primate.is_female and primate.params.has_widow_male_aging_multiplier:
                     Widow_multiplier = 3
-                if primate.params.species_name == "sequents" and not primate.is_female and primate.age_years > (12783 / earth_year):
+                if primate.params.has_sequent_sex_transition and not primate.is_female and primate.age_years > (12783 / earth_year):
                     primate.is_female = True
                     primate.age_days = 5479 # 1b. Sequential hermaphrodite check
                
@@ -239,7 +239,7 @@ class PrimateSimulation:
                             else:
                                 male_childless += 1
                      # --- NEW RESPAWN LOGIC (DOUBLES) ---
-                    if primate.params.species_name == "Doubles" and primate.is_female:
+                    if primate.params.has_double_female_respawn and primate.is_female:
                         respawned_male = Primate(
                             species_name="Doubles",
                             params=primate.params,
@@ -278,7 +278,7 @@ class PrimateSimulation:
             genetic_adjuster = min(1.0, breeding_population / 50.0) #This is the stand-in for incest. If the breeding population is low, mortality goes up.
 
             if self.locale.area_km2 > 0: #Divide by Zero safety check.
-                non_merfolk_population = [p for p in new_population if p.params.species_name != "Merfolk"] #Mermaids & mermen live in the sea, not on land.
+                non_merfolk_population = [p for p in new_population if not p.params.excluded_from_land_density] #Species with this flag are excluded from land density (e.g., sea-dwellers).
                 inhabitants_per_sq_km = len(non_merfolk_population) / self.locale.area_km2 if len(non_merfolk_population) > 0 else 1 # Avoid zero population with all merfolk
                 density_penalty = min(1, 100 / inhabitants_per_sq_km) # That way below 100/km² has no advantage.
                 genetic_adjuster *= density_penalty
@@ -462,7 +462,7 @@ class PrimateSimulation:
                             birth_counter += 1
                         else:
                             death_counter += 1
-                            if mother.params.species_name == "Doubles" and mother.is_female:
+                            if mother.params.has_double_female_respawn and mother.is_female:
                                 respawned_male = Primate(
                                     species_name=mother.species_name,
                                     params=mother.params,
@@ -472,7 +472,7 @@ class PrimateSimulation:
                                 )
                                 newborns.append(respawned_male) 
                             if father: #safety check against asexual reproduction.
-                                if mother.params.species_name == "Pigfolk" or father.params.species_name == "Pigfolk":
+                                if mother.params.produces_piglet_calories or father.params.produces_piglet_calories:
                                     piglet_calories += 1000 #There dead infants are actually piglets that others can eat.
 
                     # Reset breeding timer
@@ -511,7 +511,7 @@ class PrimateSimulation:
                                 male_had_child += 1
                             else:
                                 male_childless += 1
-                    if primate.params.species_name == "Doubles" and primate.is_female:
+                    if primate.params.has_double_female_respawn and primate.is_female:
                         respawned_male = Primate(
                             species_name = "Doubles",
                             params=primate.params, # Assuming self.params is available or use primate.params
@@ -568,7 +568,7 @@ class PrimateSimulation:
                         avail_veg -= step_need; fed = True
                     elif avail_meat >= step_need:
                         avail_meat -= step_need; fed = True    
-                if p.params.species_name == "Merfolk":
+                if p.params.requires_extra_water:
                     avail_water -= self.cycle_days
                     fed = avail_water >= 0 #merfolk need food & water.
                 if fed:
