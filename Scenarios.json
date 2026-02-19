@@ -336,7 +336,7 @@
       { "species_name": "hiver", "age_days": 4201, "is_female": true, "is_initially_fertile": true }, { "species_name": "hiver", "age_days": 4201, "is_female": true, "is_initially_fertile": true },
       { "species_name": "simult", "age_days": 3835, "is_female": true, "is_initially_fertile": true }, { "species_name": "simult", "age_days": 3835, "is_female": true, "is_initially_fertile": true },
       { "species_name": "sequent", "age_days": 3835, "is_female": false, "is_initially_fertile": true }, { "species_name": "sequent", "age_days": 3835, "is_female": false, "is_initially_fertile": true },
-      { "species_name": "merlin", "age_days": 3835, "is_female": false, "is_initially_fertile": true }, { "species_name": "merlin", "age_days": 3835, "is_female": true, "is_initially_fertile": true },
+      { "species_name": "merlin", "age_days": 19627, "is_female": false, "is_initially_fertile": true }, { "species_name": "merlin", "age_days": 19627, "is_female": true, "is_initially_fertile": true },
       { "species_name": "salarian", "age_days": 1917, "is_female": false, "is_initially_fertile": true }, { "species_name": "salarian", "age_days": 1917, "is_female": true, "is_initially_fertile": true },
       { "species_name": "satyr", "age_days": 2405, "is_female": false, "is_initially_fertile": true }, { "species_name": "satyr", "age_days": 2405, "is_female": true, "is_initially_fertile": true },
       { "species_name": "usagimimi", "age_days": 2337, "is_female": false, "is_initially_fertile": true }, { "species_name": "usagimimi", "age_days": 2337, "is_female": true, "is_initially_fertile": true },
@@ -352,7 +352,8 @@
       { "species_name": "shikamimi", "age_days": 1096, "is_female": false, "is_initially_fertile": true }, { "species_name": "shikamimi", "age_days": 1096, "is_female": true, "is_initially_fertile": true },
       { "species_name": "homo_antecessor", "age_days": 6989, "is_female": false, "is_initially_fertile": true }, { "species_name": "homo_antecessor", "age_days": 6989, "is_female": true, "is_initially_fertile": true },
       { "species_name": "merfolk", "age_days": 3000, "is_female": false, "is_initially_fertile": true }, { "species_name": "merfolk", "age_days": 3000, "is_female": true, "is_initially_fertile": true },
-	  { "species_name": "darkspawn", "age_days": 900, "is_female": false, "is_initially_fertile": true }, { "species_name": "darkspawn", "age_days": 900, "is_female": true, "is_initially_fertile": true }
+	  { "species_name": "darkspawn", "age_days": 900, "is_female": false, "is_initially_fertile": true }, { "species_name": "darkspawn", "age_days": 900, "is_female": true, "is_initially_fertile": true },
+	  { "species_name": "widow", "age_days": 5844, "is_female": false, "is_initially_fertile": true }, { "species_name": "widow", "age_days": 5844, "is_female": true, "is_initially_fertile": true }
     ]
   },
   "vault_69": {
