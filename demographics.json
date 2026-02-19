@@ -94,7 +94,7 @@
     "calories_needed_per_primate": 1800,
     "diet_type": "omnivore",
     "initial_genetic_diversity": 1.01,
-    "miscarriage_stillborn_rate": 0.10,
+    "miscarriage_stillborn_rate": 0.1,
     "fertility_rising_steepness": 1.2,
     "fertility_falling_steepness": 0.5,
     "is_hermaphrodite": false,
@@ -113,7 +113,7 @@
     "base_fertility_rate": 0.68,
     "sterile_chance": 0.002,
     "sex_ratio_at_birth": 0.486,
-    "infant_mortality_rate": 0.10,
+    "infant_mortality_rate": 0.1,
     "maternal_mortality_rate": 0.0125,
     "adult_mortality_rate": 0.0125,
     "calories_needed_per_primate": 3621,
@@ -259,17 +259,17 @@
     "coupling_rate": 0.2,
     "interbirth_interval_days": 3000,
     "max_kids_per_primate": 3,
-    "chance_of_multiple_birth": 0.00001,
+    "chance_of_multiple_birth": 1e-05,
     "base_fertility_rate": 0.375,
     "sterile_chance": 0.0003,
     "sex_ratio_at_birth": 0.5714,
-    "infant_mortality_rate": 0.00001,
-    "maternal_mortality_rate": 0.000013,
-    "adult_mortality_rate": 0.00005,
+    "infant_mortality_rate": 1e-05,
+    "maternal_mortality_rate": 1.3e-05,
+    "adult_mortality_rate": 5e-05,
     "calories_needed_per_primate": 9000,
     "diet_type": "omnivore",
     "initial_genetic_diversity": 1.0,
-    "miscarriage_stillborn_rate": 0.00002,
+    "miscarriage_stillborn_rate": 2e-05,
     "fertility_rising_steepness": 0.6,
     "fertility_falling_steepness": 0.7,
     "is_hermaphrodite": false,
@@ -370,7 +370,7 @@
     "diet_type": "omnivore",
     "initial_genetic_diversity": 1.0,
     "miscarriage_stillborn_rate": 0.5,
-    "fertility_rising_steepness": 0.00001,
+    "fertility_rising_steepness": 1e-05,
     "fertility_falling_steepness": 0.0001,
     "is_hermaphrodite": false,
     "contraception_abortion_use_rate": 0.55
@@ -439,7 +439,7 @@
     "sterile_chance": 0.0,
     "sex_ratio_at_birth": 1.0,
     "infant_mortality_rate": 0.002,
-    "maternal_mortality_rate": 0.00001,
+    "maternal_mortality_rate": 1e-05,
     "adult_mortality_rate": 0.03,
     "calories_needed_per_primate": 8000,
     "diet_type": "omnivore",
@@ -499,7 +499,8 @@
     "fertility_falling_steepness": 0.5,
     "is_hermaphrodite": false,
     "is_sequential_species": true,
-    "contraception_abortion_use_rate": 0.65
+    "contraception_abortion_use_rate": 0.65,
+    "has_sequent_sex_transition": true
   },
   "merlin": {
     "species_name": "merlins",
@@ -651,7 +652,8 @@
     "fertility_falling_steepness": 0.5,
     "is_hermaphrodite": false,
     "contraception_abortion_use_rate": 0.0,
-    "is_sequential_species": true
+    "is_sequential_species": true,
+    "has_double_female_respawn": true
   },
   "treant": {
     "species_name": "Treants",
@@ -825,13 +827,14 @@
     "calories_needed_per_primate": 3200,
     "diet_type": "everything",
     "initial_genetic_diversity": 1.0,
-    "miscarriage_stillborn_rate": 0.10,
+    "miscarriage_stillborn_rate": 0.1,
     "fertility_rising_steepness": 1.2,
     "fertility_falling_steepness": 0.5,
     "is_hermaphrodite": false,
     "is_dominant": true,
     "contraception_abortion_use_rate": 0.0,
-    "seasonal_mater": true
+    "seasonal_mater": true,
+    "produces_piglet_calories": true
   },
   "shikamimi": {
     "species_name": "deerfolk",
@@ -907,7 +910,9 @@
     "fertility_rising_steepness": 1.2,
     "fertility_falling_steepness": 0.5,
     "is_hermaphrodite": false,
-    "contraception_abortion_use_rate": 0.01
+    "contraception_abortion_use_rate": 0.01,
+    "excluded_from_land_density": true,
+    "requires_extra_water": true
   },
   "darkspawn": {
     "species_name": "Darkspawn",
@@ -984,6 +989,7 @@
     "fertility_rising_steepness": 1.2,
     "fertility_falling_steepness": 0.5,
     "is_hermaphrodite": false,
-    "contraception_abortion_use_rate": 0.55
+    "contraception_abortion_use_rate": 0.55,
+    "has_widow_male_aging_multiplier": true
   }
 }
