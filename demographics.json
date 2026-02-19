@@ -653,7 +653,7 @@
     "is_hermaphrodite": false,
     "contraception_abortion_use_rate": 0.0,
     "is_sequential_species": true,
-    "has_double_female_respawn": true
+    "respawn_as_male": true
   },
   "treant": {
     "species_name": "Treants",
@@ -834,7 +834,7 @@
     "is_dominant": true,
     "contraception_abortion_use_rate": 0.0,
     "seasonal_mater": true,
-    "produces_piglet_calories": true
+    "kid_fodder": true
   },
   "shikamimi": {
     "species_name": "deerfolk",
@@ -911,8 +911,7 @@
     "fertility_falling_steepness": 0.5,
     "is_hermaphrodite": false,
     "contraception_abortion_use_rate": 0.01,
-    "excluded_from_land_density": true,
-    "requires_extra_water": true
+    "is_aquatic": true
   },
   "darkspawn": {
     "species_name": "Darkspawn",
@@ -990,6 +989,6 @@
     "fertility_falling_steepness": 0.5,
     "is_hermaphrodite": false,
     "contraception_abortion_use_rate": 0.55,
-    "has_widow_male_aging_multiplier": true
+    "lopsided_sex_lifespan": true
   }
 }

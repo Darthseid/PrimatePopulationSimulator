@@ -11,7 +11,7 @@ from graphing import log_population_stats, display_population_pyramid, plot_popu
 from typing import List
 
 earth_year = 365.2422
-starting_population = 900
+starting_population = 100
 
 class PrimateSimulation:
     """
@@ -111,7 +111,7 @@ class PrimateSimulation:
         cycle = 1
         cycle_days_passed = 0
         cycle_length_in_years = self.cycle_days / earth_year
-        hybridization_type = "lineal"
+        hybridization_type = "midpoint"
 
         if self.cycle_days <= 0: # Safety check
             cycle_interval = 1
@@ -136,8 +136,7 @@ class PrimateSimulation:
             fertile_female_count = 0
             piglet_calories = 0
 
-            # --- CALCULATE SEASON ---
-            day_of_year = self.current_day % earth_year
+            day_of_year = self.current_day % earth_year # --- CALCULATE SEASON ---
             is_mating_season = (day_of_year < 30) or (day_of_year > (earth_year - 30)) or self.cycle_days >= 335 #December 2 to January 31.
 
             active_disasters = []
@@ -157,16 +156,13 @@ class PrimateSimulation:
                                       (p.age_years * earth_year >= p.params.puberty_age_days) and 
                                       (p.age_years * earth_year < p.params.lifespan_days)]
                         
-                        surviving_males = resolve_warfare(combatants)
-                 
-                        # Determine which combatants died and update childless/had_child counters
+                        surviving_males = resolve_warfare(combatants)                     
                         killed_combatants = [p for p in combatants if p not in surviving_males]
                         war_deaths = len(killed_combatants)
-                        death_counter += war_deaths
-                        for killed in killed_combatants:
-                            # Only count if at or past puberty (combatants are filtered to be post-puberty already)
+                        death_counter += war_deaths  # Determine which combatants died and update childless/had_child counters
+                        for killed in killed_combatants:            
                             if killed.age_years * earth_year >= killed.params.puberty_age_days:
-                                if killed.is_female:
+                                if killed.is_female: # Only count if at or past puberty (combatants are filtered to be post-puberty already)
                                     if killed.number_of_healthy_children > 0:
                                         female_had_child += 1
                                     else:
@@ -188,7 +184,7 @@ class PrimateSimulation:
                     primate.age_days += self.cycle_days # Age increases
                 
                 Widow_multiplier = 1
-                if not primate.is_female and primate.params.has_widow_male_aging_multiplier:
+                if not primate.is_female and primate.params.lopsided_sex_lifespan:
                     Widow_multiplier = 3
                 if primate.params.has_sequent_sex_transition and not primate.is_female and primate.age_years > (12783 / earth_year):
                     primate.is_female = True
@@ -221,9 +217,8 @@ class PrimateSimulation:
                         total_OldAgeDeaths += 1
                 
                 if died:
-                    death_counter += 1
-                    # Track childless/had_child for adults (ignore pre-pubescent deaths)
-                    try:
+                    death_counter += 1         
+                    try: # Track childless/had_child for adults (ignore pre-pubescent deaths)
                         is_adult = primate.age_years * earth_year >= primate.params.puberty_age_days
                     except Exception:
                         is_adult = False
@@ -237,9 +232,8 @@ class PrimateSimulation:
                             if primate.number_of_healthy_children > 0:
                                 male_had_child += 1
                             else:
-                                male_childless += 1
-                     # --- NEW RESPAWN LOGIC (DOUBLES) ---
-                    if primate.params.has_double_female_respawn and primate.is_female:
+                                male_childless += 1        
+                    if primate.params.respawn_as_male and primate.is_female:  # --- NEW RESPAWN LOGIC (DOUBLES) ---
                         respawned_male = Primate(
                             species_name="Doubles",
                             params=primate.params,
@@ -278,7 +272,7 @@ class PrimateSimulation:
             genetic_adjuster = min(1.0, breeding_population / 50.0) #This is the stand-in for incest. If the breeding population is low, mortality goes up.
 
             if self.locale.area_km2 > 0: #Divide by Zero safety check.
-                non_merfolk_population = [p for p in new_population if not p.params.excluded_from_land_density] #Species with this flag are excluded from land density (e.g., sea-dwellers).
+                non_merfolk_population = [p for p in new_population if not p.params.is_aquatic] #Species with this flag are excluded from land density (e.g., sea-dwellers).
                 inhabitants_per_sq_km = len(non_merfolk_population) / self.locale.area_km2 if len(non_merfolk_population) > 0 else 1 # Avoid zero population with all merfolk
                 density_penalty = min(1, 100 / inhabitants_per_sq_km) # That way below 100/km² has no advantage.
                 genetic_adjuster *= density_penalty
@@ -393,15 +387,14 @@ class PrimateSimulation:
                         if is_hybrid:
                             mom_dom = mother.params.is_dominant
                             dad_dom = father.params.is_dominant                        
-                            if mom_dom and dad_dom:
-                                # Two different dominant species = Non-viable
+                            if mom_dom and dad_dom:  # Two different dominant species = Non-viable           
                                 birth_aborted = True
                             elif mom_dom:
                                 child_params = mother.params
                                 is_hybrid = False # Treated as pure for logic
                             elif dad_dom:
                                 child_params = father.params
-                                is_hybrid = False # Treated as pure for logic
+                                is_hybrid = False
 
                         if birth_aborted: continue
                         if hybridization_type == "lineal":  # Sons follow father's species, daughters follow mother's species.
@@ -462,7 +455,7 @@ class PrimateSimulation:
                             birth_counter += 1
                         else:
                             death_counter += 1
-                            if mother.params.has_double_female_respawn and mother.is_female:
+                            if mother.params.respawn_as_male and mother.is_female:
                                 respawned_male = Primate(
                                     species_name=mother.species_name,
                                     params=mother.params,
@@ -472,31 +465,27 @@ class PrimateSimulation:
                                 )
                                 newborns.append(respawned_male) 
                             if father: #safety check against asexual reproduction.
-                                if mother.params.produces_piglet_calories or father.params.produces_piglet_calories:
-                                    piglet_calories += 1000 #There dead infants are actually piglets that others can eat.
-
-                    # Reset breeding timer
-                    mother.next_breeding_day = self.current_day + mother.params.interbirth_interval_days         
+                                if mother.params.kid_fodder or father.params.kid_fodder:
+                                    piglet_calories += 1000 #There dead infants are actually piglets that others can eat.                    
+                    mother.next_breeding_day = self.current_day + mother.params.interbirth_interval_days  # Reset breeding timer         
 
             final_survivors = [] # 5. Final death check (maternal and adult mortality)
             for primate in new_population:
                 died = False
                 if primate in mothers_who_gave_birth and random.random() <= primate.params.maternal_mortality_rate:
                     died = True
-                else: # Use else here to group the adult mortality check
-                    # Calculate adjusted mortality for this specific primate
+                else: # Use else here to group the adult mortality check            
                     adult_mortality = primate.params.adult_mortality_rate * cycle_length_in_years
                     adjusted_adult_mortality = adult_mortality * (1.0 + (1.0 - genetic_adjuster)) ** 1.59
-                    for disaster in active_disasters:
+                    for disaster in active_disasters: # Calculate adjusted mortality for this specific primate
                         if disaster.name == "Plague":
                             adjusted_adult_mortality += 0.2
                     if primate.age_years > 0.5 and random.random() < adjusted_adult_mortality:
                         died = True   
                 
                 if died:
-                    death_counter += 1
-                    # Track childless/had_child for adult deaths (ignore pre-pubescent)
-                    try:
+                    death_counter += 1          
+                    try: # Track childless/had_child for adult deaths (ignore pre-pubescent)
                         is_adult = primate.age_years * earth_year >= primate.params.puberty_age_days
                     except Exception:
                         is_adult = False
@@ -511,7 +500,7 @@ class PrimateSimulation:
                                 male_had_child += 1
                             else:
                                 male_childless += 1
-                    if primate.params.has_double_female_respawn and primate.is_female:
+                    if primate.params.respawn_as_male and primate.is_female:
                         respawned_male = Primate(
                             species_name = "Doubles",
                             params=primate.params, # Assuming self.params is available or use primate.params
@@ -568,15 +557,14 @@ class PrimateSimulation:
                         avail_veg -= step_need; fed = True
                     elif avail_meat >= step_need:
                         avail_meat -= step_need; fed = True    
-                if p.params.requires_extra_water:
+                if p.params.is_aquatic:
                     avail_water -= self.cycle_days
                     fed = avail_water >= 0 #merfolk need food & water.
                 if fed:
                     final_population.append(p)
                 else:
-                    death_counter += 1
-                    # Track childless/had_child for starvation deaths (ignore pre-pubescent)
-                    try:
+                    death_counter += 1                 
+                    try: # Track childless/had_child for starvation deaths (ignore pre-pubescent)
                         is_adult = p.age_years * earth_year >= p.params.puberty_age_days
                     except Exception:
                         is_adult = False
@@ -656,9 +644,8 @@ class PrimateSimulation:
             print(sampled_unions) #Only unique unions printed due to set usage
         else:
             print("[] (No coupled individuals found)")
-
-        # Print childless ratios
-        def ratio(had, childless):
+    
+        def ratio(had, childless): # Print childless ratios
             denom = had + childless
             return (childless / denom) if denom > 0 else None
 
@@ -674,9 +661,8 @@ class PrimateSimulation:
             print("Female childless ratio: N/A (no adult female deaths recorded)")
         else:
             print(f"Female childless ratio: {female_childless_ratio:.2%} ({female_childless} childless / {female_had_child + female_childless} adult female deaths)")
-
-         # Print oldest male and female primates
-        if self.population:
+   
+        if self.population:  # Print oldest male and female primates
             males = [p for p in self.population if not p.is_female]
             females = [p for p in self.population if p.is_female]
             if males:
@@ -700,9 +686,9 @@ class PrimateSimulation:
 if __name__ == "__main__":
     with open("demographics.json", "r") as f:
         demographics_data = json.load(f)
-    #starting_species = list(demographics_data.keys()) #This is for simulations, otherwise manually enter the starting species.
-    starting_species = ["merlin"]
+    starting_species = list(demographics_data.keys()) #This is for simulations, otherwise manually enter the starting species.
+    #starting_species = ["merlin"]
     sim_locale = Locale.from_json("locales.json", "pampas")   
-    simulation = PrimateSimulation(starting_species, sim_locale)  # Load multiple species   
-    simulation.run_simulation(num_years=490.0) # Run the specific scenario
+    simulation = PrimateSimulation(starting_species, sim_locale, 'survival_of_the_fittest')  # Load multiple species   
+    simulation.run_simulation(num_years=150.0) # Run the specific scenario
 
