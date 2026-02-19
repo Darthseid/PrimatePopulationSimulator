@@ -11,7 +11,7 @@ from graphing import log_population_stats, display_population_pyramid, plot_popu
 from typing import List
 
 earth_year = 365.2422
-starting_population = 200
+starting_population = 900
 
 class PrimateSimulation:
     """
@@ -27,7 +27,7 @@ class PrimateSimulation:
         self.current_day = 0
         self.history = []
 
-        self.disasters = Disaster.from_json("locales.json")
+        self.disasters = Disaster.from_json("disasters.json")
 
         self.cycle_days = min(params.interbirth_interval_days for params in self.species_params.values())       
         print(f"Locale: {self.locale.name} ({self.locale.biome_type})")
@@ -199,9 +199,8 @@ class PrimateSimulation:
                     if primate.age_days <= 0: # Death by old age for Merlins
                         died = True
                         total_OldAgeDeaths += 1
-                else: # Standard "old age" death check
-                    
-                    HUMAN_STD_LIFESPAN = 87.0  # years # --- 1. DEFINE HUMAN BASELINE ---
+                else: # Standard "old age" death check              
+                    HUMAN_STD_LIFESPAN = 81.4 # years # --- 1. DEFINE HUMAN BASELINE ---
                     age_in_years = primate.age_years * Widow_multiplier
                     species_lifespan_years = primate.params.lifespan_days / earth_year if primate.params.lifespan_days > 0 else 0.0        
                     if species_lifespan_years <= 0:
@@ -440,11 +439,21 @@ class PrimateSimulation:
                                 father.number_of_healthy_children += 1
                                 if is_hybrid:
                                     hybrid_sterile_chance += hybrid_sterile_boost
-                            is_initially_fertile = random.random() > hybrid_sterile_chance
+                            is_initially_fertile = random.random() > hybrid_sterile_chance             
+                            if child_params.ages_backward:
+                                if getattr(child_params, "lifespan_days", 0) and child_params.lifespan_days > 0:
+                                    sigma = 0.175 # This allows one in 10,000 to live up to 150, and other Merlinsthe same probability to  be born at 40. 
+                                    mu = math.log(child_params.lifespan_days) - 0.5 * sigma**2
+                                    randomized_age = int(random.lognormvariate(mu, sigma))
+                                else:
+                                    randomized_age = 0  # NEW: If species uses ages_backward, newborns should start near lifespan (±10%)
+                                age_for_child = randomized_age
+                            else:
+                                age_for_child = 0
                             child = Primate(
                                 species_name=child_params.species_name,
                                 is_female=is_female_child,
-                                age_days=0,
+                                age_days=age_for_child,
                                 is_initially_fertile=is_initially_fertile,
                                 params=child_params
                             )
@@ -689,13 +698,11 @@ class PrimateSimulation:
         plot_population_history(self.history, self.current_day)
 
 if __name__ == "__main__":
-    # Load all species keys from demographics.json
     with open("demographics.json", "r") as f:
         demographics_data = json.load(f)
-    starting_species = list(demographics_data.keys()) #This is for simulations, otherwise manually enter the starting species.
-
-    starting_species = ["widow"]
+    #starting_species = list(demographics_data.keys()) #This is for simulations, otherwise manually enter the starting species.
+    starting_species = ["merlin"]
     sim_locale = Locale.from_json("locales.json", "pampas")   
     simulation = PrimateSimulation(starting_species, sim_locale)  # Load multiple species   
-    simulation.run_simulation(num_years=200.0) # Run the specific scenario
+    simulation.run_simulation(num_years=490.0) # Run the specific scenario
 
