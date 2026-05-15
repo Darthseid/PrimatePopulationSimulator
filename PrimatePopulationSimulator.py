@@ -11,7 +11,7 @@ from graphing import log_population_stats, display_population_pyramid, plot_popu
 from typing import List
 
 earth_year = 365.2422
-starting_population = 100
+starting_population = 200
 
 class PrimateSimulation:
     """
@@ -435,7 +435,7 @@ class PrimateSimulation:
                             is_initially_fertile = random.random() > hybrid_sterile_chance             
                             if child_params.ages_backward:
                                 if getattr(child_params, "lifespan_days", 0) and child_params.lifespan_days > 0:
-                                    sigma = 0.175 # This allows one in 10,000 to live up to 150, and other Merlinsthe same probability to  be born at 40. 
+                                    sigma = 0.175 # This allows one in 10,000 to live up to 150, and other Merlins the same probability to  be born at 40. 
                                     mu = math.log(child_params.lifespan_days) - 0.5 * sigma**2
                                     randomized_age = int(random.lognormvariate(mu, sigma))
                                 else:
@@ -686,9 +686,9 @@ class PrimateSimulation:
 if __name__ == "__main__":
     with open("demographics.json", "r") as f:
         demographics_data = json.load(f)
-    starting_species = list(demographics_data.keys()) #This is for simulations, otherwise manually enter the starting species.
-    #starting_species = ["merlin"]
+   # starting_species = list(demographics_data.keys()) #This is for simulations, otherwise manually enter the starting species.
+    starting_species = ["shikamimi"]
     sim_locale = Locale.from_json("locales.json", "pampas")   
-    simulation = PrimateSimulation(starting_species, sim_locale, 'survival_of_the_fittest')  # Load multiple species   
-    simulation.run_simulation(num_years=150.0) # Run the specific scenario
+    simulation = PrimateSimulation(starting_species, sim_locale)  # Load multiple species   
+    simulation.run_simulation(num_years=100.0) # Run the specific scenario
 
