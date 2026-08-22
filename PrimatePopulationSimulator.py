@@ -140,11 +140,11 @@ class PrimateSimulation:
             is_mating_season = (day_of_year < 30) or (day_of_year > (earth_year - 30)) or self.cycle_days >= 335 #December 2 to January 31.
 
             active_disasters = []
-
+            disasters_enabled = False
             for disaster in self.disasters:
-                if disaster.try_trigger(self.current_day, self.cycle_days, len(self.population)):
+                if disaster.try_trigger(self.current_day, self.cycle_days, len(self.population)) and disasters_enabled:
                     print(f"*** DISASTER TRIGGERED: {disaster.name} ***")
-                if disaster.is_active:
+                if disaster.is_active and disasters_enabled:
                     if disaster.check_end(self.current_day):
                         print(f"*** DISASTER ENDED: {disaster.name} ***")
                     else:
@@ -686,9 +686,9 @@ class PrimateSimulation:
 if __name__ == "__main__":
     with open("demographics.json", "r") as f:
         demographics_data = json.load(f)
-    starting_species = list(demographics_data.keys()) #This is for simulations, otherwise manually enter the starting species.
-  #  starting_species = ["shikamimi"]
-    sim_locale = Locale.from_json("locales.json", "pampas")   
-    simulation = PrimateSimulation(starting_species, sim_locale, "generation_ship")  # Load multiple species   
-    simulation.run_simulation(num_years=1000.0) # Run the specific scenario
+    #starting_species = list(demographics_data.keys()) #This is for simulations, otherwise manually enter the starting species.
+    starting_species = [ "modern_human"]
+    sim_locale = Locale.from_json("locales.json", "south_african_savanna")   
+    simulation = PrimateSimulation(starting_species, sim_locale)  # Load multiple species   
+    simulation.run_simulation(num_years=500.0) # Run the specific scenario
 
