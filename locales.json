@@ -1,5 +1,6 @@
 {
   "nauru": {
+    "description": "Nauru is a small island country in Micronesia, northeast of Australia. It has a tropical climate and limited freshwater resources.","
     "name": "Nauru",
     "biome_type": "Tropical Island",
     "area_km2": 21.0,
@@ -9,6 +10,7 @@
     "ruminant_calories": 4.53e4
   },
   "pampas": {
+    "description": "The Pampas is a vast fertile lowland region in South America, primarily in Argentina and Uruguay. It is known for its temperate grasslands and agricultural productivity.",
     "name": "The Pampas",
     "biome_type": "Temperate Grassland",
     "area_km2": 1200000.0,
@@ -18,6 +20,7 @@
     "ruminant_calories": 4.53e9
   },
   "mojave_desert": {
+    "description": "The Mojave Desert is a desert in the southwestern United States,  It is characterized by arid conditions and unique desert flora and fauna.",
     "name": "The Mojave Desert",
     "biome_type": "Hot Desert",
     "area_km2": 124000.0,
@@ -27,6 +30,7 @@
     "ruminant_calories": 1.53e7
   },
   "greenland_coast": {
+    "description": "Greenland's coastal tundra is a cold, treeless region with permafrost and limited vegetation. It is home to unique Arctic wildlife.",
     "name": "Greenland (Coastal Tundra)",
     "biome_type": "Arctic Tundra",
     "area_km2": 410000.0,
@@ -36,6 +40,7 @@
     "ruminant_calories": 7.1e6
   },
   "amazonas": {
+    "description": "The Amazon Rainforest is a vast tropical rainforest in South America, known for its incredible biodiversity and dense vegetation.",
     "name": "Amazonas",
     "biome_type": "Tropical Rainforest",
     "area_km2": 5500000.0,
@@ -45,6 +50,7 @@
     "ruminant_calories": 8e7
   },
   "southern_finland": {
+    "description": "Southern Finland is characterized by boreal forests, lakes, and a cold climate. It supports a variety of wildlife adapted to the northern environment.",
     "name": "Southern Finland",
     "biome_type": "Boreal Forest (Taiga)",
     "area_km2": 100000.0,
@@ -54,6 +60,7 @@
     "ruminant_calories": 16000000
   },
   "great_dismal_swamp": {
+    "description": "The Great Dismal Swamp is a large swamp in the southeastern United States, known for its wetlands, diverse wildlife, and historical significance.",
     "name": "Great Dismal Swamp",
     "biome_type": "Temperate Wetland",
     "area_km2": 3000.0,
@@ -63,6 +70,7 @@
     "ruminant_calories": 3e6
   },
   "south_african_savanna": {
+    "description": "The South African Savanna is a tropical savanna biome characterized by grasslands, scattered trees, and a diverse range of wildlife, including large herbivores and predators.",
     "name": "South African Savanna",
     "biome_type": "Tropical Savanna",
     "area_km2": 2000000.0,
@@ -72,6 +80,7 @@
     "ruminant_calories": 1.04e9
   },
   "mount_everest": {
+    "description": "The Mount Everest Region is a high-altitude area in the Himalayas, known for its extreme cold, ice-covered peaks, and limited vegetation.",
     "name": "Mount Everest Region",
     "biome_type": "Alpine Desert / Ice",
     "area_km2": 1148.0,

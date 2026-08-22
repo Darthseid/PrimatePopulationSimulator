@@ -1,20 +1,24 @@
 {
   "Plague": {
+    "description": "A deadly disease spreads across the population, causing widespread illness and death.",
     "trigger_chance": 0.01,
     "duration_cycles": 5,
     "is_possible": true
   },
   "Famine": {
+    "description": "A severe shortage of food leads to widespread hunger and malnutrition.",
     "trigger_chance": 0.007,
     "duration_cycles": 12,
     "is_possible": true
   },
   "Pollution": {
+    "description": "Polluted consumption severely reduces fertility. This disaster has long-term effects on population growth instead of sudden death.",
     "trigger_chance": 0.02,
     "duration_cycles": 8,
     "is_possible": true
   },
   "Warfare": {
+    "description": "Men fight each other for wives.",
     "trigger_chance": 0.009,
     "duration_cycles": 1,
     "is_possible": true

@@ -1,5 +1,6 @@
 {
   "medieval_human": {
+    "description": "A peasant from the medieval period. They suffer high mortality rates and other medical issues.",
     "species_name": "medieval_humans",
     "puberty_age_days": 4566,
     "menopause_age_days": 18627,
@@ -25,6 +26,7 @@
     "contraception_abortion_use_rate": 0.01
   },
   "modern_human": {
+    "description": "A modern human. Baseline for comparison.",
     "species_name": "modern_humans",
     "coupling_rate": 0.22,
     "puberty_age_days": 3835,
@@ -50,6 +52,7 @@
     "contraception_abortion_use_rate": 0.55
   },
   "kaleidar": {
+    "description": "A colorful fantasy humanoid species. They're intermediary between medieval and modern humans.",
     "species_name": "kaleidar",
     "coupling_rate": 0.3,
     "puberty_age_days": 4201,
@@ -76,6 +79,7 @@
     "is_dominant": true
   },
   "chimpanzee": {
+    "description": "Real life animal. They have a high coupling rate and a short lifespan.",
     "species_name": "chimpanzees",
     "puberty_age_days": 3287,
     "coupling_rate": 0.7,
@@ -101,6 +105,7 @@
     "contraception_abortion_use_rate": 0.0
   },
   "gorilla": {
+    "description": "Real life animal. Largest primate.",
     "species_name": "gorillas",
     "puberty_age_days": 2922,
     "menopause_age_days": 13610,
@@ -126,6 +131,7 @@
     "contraception_abortion_use_rate": 0.0
   },
   "mandrill": {
+    "description": "Real life animal. Colorful primate.",
     "species_name": "mandrill",
     "puberty_age_days": 1370,
     "menopause_age_days": 9997,
@@ -151,6 +157,7 @@
     "contraception_abortion_use_rate": 0.0
   },
   "ring_tailed_lemur": {
+    "description": "Real life animal. Small primate.",
     "species_name": "ring_tailed_lemurs",
     "puberty_age_days": 731,
     "menopause_age_days": 6479,
@@ -176,6 +183,7 @@
     "contraception_abortion_use_rate": 0.0
   },
   "neanderthal": {
+    "description": "Extinct human relative.",
     "species_name": "Neanderthals",
     "puberty_age_days": 4967,
     "menopause_age_days": 19139,
@@ -201,6 +209,7 @@
     "contraception_abortion_use_rate": 0.0
   },
   "orc": {
+    "description": "Short life history humanoids. They breed fast and die young. Carnivores.",
     "species_name": "Orcs",
     "puberty_age_days": 3000,
     "menopause_age_days": 12900,
@@ -226,6 +235,7 @@
     "contraception_abortion_use_rate": 0.0
   },
   "goblin": {
+    "description": "Contender for fastest breeders. They die quickly.",
     "species_name": "Goblins",
     "puberty_age_days": 1000,
     "menopause_age_days": 6000,
@@ -251,6 +261,7 @@
     "contraception_abortion_use_rate": 0.0
   },
   "elf": {
+    "description": "Long lived humanoids. They breed slowly and live long.",
     "species_name": "Elves",
     "puberty_age_days": 36524,
     "menopause_age_days": 109572,
@@ -276,6 +287,7 @@
     "contraception_abortion_use_rate": 0.5
   },
   "hobbit": {
+    "description": "Short humanoids. Herbivores.",
     "species_name": "hobbits",
     "coupling_rate": 0.2,
     "puberty_age_days": 3201,
@@ -301,6 +313,7 @@
     "contraception_abortion_use_rate": 0.01
   },
   "faerie": {
+    "description": "Extremely fast life history.",
     "species_name": "faeries",
     "coupling_rate": 0.3,
     "puberty_age_days": 7,
@@ -326,6 +339,7 @@
     "contraception_abortion_use_rate": 0.0
   },
   "giant": {
+    "description": "They eat a lot.",
     "species_name": "giant",
     "puberty_age_days": 4966,
     "menopause_age_days": 19999,
@@ -351,6 +365,7 @@
     "contraception_abortion_use_rate": 0.01
   },
   "peak": {
+    "description": "They have fewer fertile years, but they stay highly fertile during that span.",
     "species_name": "Peakers",
     "coupling_rate": 0.22,
     "puberty_age_days": 3835,
@@ -376,6 +391,7 @@
     "contraception_abortion_use_rate": 0.55
   },
   "frontloader": {
+    "description": "They go through puberty and menopause much earlier than humans.",
     "species_name": "frontloaders",
     "coupling_rate": 0.23,
     "puberty_age_days": 600,
@@ -401,6 +417,7 @@
     "contraception_abortion_use_rate": 0.55
   },
   "royal_human": {
+    "description": "This represents historical nobles. They reproduce as much as they can.",
     "species_name": "nobles",
     "coupling_rate": 0.2,
     "puberty_age_days": 4201,
@@ -426,6 +443,7 @@
     "contraception_abortion_use_rate": 0.1
   },
   "hiver": {
+    "description": "Asexually reproducing hive mind species.",
     "species_name": "Hivers",
     "coupling_rate": 1.0,
     "puberty_age_days": 4201,
@@ -451,6 +469,7 @@
     "contraception_abortion_use_rate": 0.0
   },
   "simult": {
+    "description": "Simultaneous hermaphrodite humanoids.",
     "species_name": "Simults",
     "coupling_rate": 0.22,
     "puberty_age_days": 3835,
@@ -476,6 +495,7 @@
     "contraception_abortion_use_rate": 0.7
   },
   "sequent": {
+    "description": "Sequents are always born male and they transition into a female at midlife.",
     "species_name": "Sequents",
     "coupling_rate": 0.11,
     "puberty_age_days": 3835,
@@ -503,6 +523,7 @@
     "has_sequent_sex_transition": true
   },
   "merlin": {
+    "description": "Merlins age backwards.",
     "species_name": "merlins",
     "coupling_rate": 0.22,
     "puberty_age_days": 3835,
@@ -529,6 +550,7 @@
     "ages_backward": true
   },
   "salarian": {
+    "description": "Salarians have short life history",
     "species_name": "Salarians",
     "coupling_rate": 0.22,
     "puberty_age_days": 1917,
@@ -554,6 +576,7 @@
     "contraception_abortion_use_rate": 0.55
   },
   "satyr": {
+    "description": "Satyrs are superfecund ruminants. Lots of kids per pregnancy.",
     "species_name": "satyrs",
     "puberty_age_days": 2405,
     "menopause_age_days": 15764,
@@ -579,6 +602,7 @@
     "contraception_abortion_use_rate": 0.56
   },
   "usagimimi": {
+    "description": "Usagimimis give birth very rapidly.",
     "species_name": "Rabbitfolks",
     "puberty_age_days": 2337,
     "menopause_age_days": 14029,
@@ -604,6 +628,7 @@
     "contraception_abortion_use_rate": 0.01
   },
   "coonfolk": {
+    "description": "Raccoon people are intermediary between Usagimimis and Satyrs.",
     "species_name": "Coons",
     "puberty_age_days": 2466,
     "menopause_age_days": 13663,
@@ -629,6 +654,7 @@
     "contraception_abortion_use_rate": 0.05
   },
   "double": {
+    "description": "Doubles are all born female and instead respawn as males upon death.",
     "species_name": "Doubles",
     "puberty_age_days": 4566,
     "menopause_age_days": 18627,
@@ -656,6 +682,7 @@
     "respawn_as_male": true
   },
   "treant": {
+    "description": "Treants are tree-like species with photosynthesis.",
     "species_name": "Treants",
     "puberty_age_days": 7305,
     "menopause_age_days": 109572,
@@ -681,6 +708,7 @@
     "contraception_abortion_use_rate": 0.0
   },
   "homo_naledi": {
+    "description": "Ancient Homo serial maters.",
     "species_name": "Naledis",
     "coupling_rate": 0.75,
     "puberty_age_days": 3134,
@@ -707,6 +735,7 @@
     "seasonal_mater": true
   },
   "mahaan": {
+    "description": "An amazing all male species that need females of other species to reproduce.",
     "species_name": "mahaan",
     "coupling_rate": 0.5,
     "puberty_age_days": 2835,
@@ -733,6 +762,7 @@
     "is_dominant": true
   },
   "anthousa": {
+    "description": "An all female plant like species that needs males of other species to reproduce.",
     "species_name": "anthousa",
     "coupling_rate": 0.95,
     "puberty_age_days": 1500,
@@ -759,6 +789,7 @@
     "is_dominant": true
   },
   "centaur": {
+    "description": "Horse human hybrids",
     "species_name": "centaurs",
     "puberty_age_days": 2191,
     "menopause_age_days": 13463,
@@ -784,6 +815,7 @@
     "contraception_abortion_use_rate": 0.04
   },
   "raionmimi": {
+    "description": "Strong carnivore humanoids.",
     "species_name": "Lionfolk",
     "puberty_age_days": 3500,
     "menopause_age_days": 18000,
@@ -809,6 +841,7 @@
     "contraception_abortion_use_rate": 0.08
   },
   "butamimi": {
+    "description": "Their dead piglets becomes food for other species to eat.",
     "species_name": "Pigfolk",
     "puberty_age_days": 1287,
     "coupling_rate": 0.666,
@@ -837,6 +870,7 @@
     "kid_fodder": true
   },
   "shikamimi": {
+    "description": "Deer human hybrids. Seasonal maters.",
     "species_name": "deerfolk",
     "puberty_age_days": 1096,
     "menopause_age_days": 99999,
@@ -863,6 +897,7 @@
     "seasonal_mater": true
   },
   "homo_antecessor": {
+    "description": "Ancient Homos that can eat grass.",
     "species_name": "Huminants",
     "coupling_rate": 0.22,
     "puberty_age_days": 6989,
@@ -888,6 +923,7 @@
     "contraception_abortion_use_rate": 0.6
   },
   "merfolk": {
+    "description": "Mermen and mermaids can live in the ocean.",
     "species_name": "Merfolk",
     "puberty_age_days": 3000,
     "menopause_age_days": 16425,
@@ -914,6 +950,7 @@
     "is_aquatic": true
   },
   "darkspawn": {
+    "description": "A brutal all-male species.",
     "species_name": "Darkspawn",
     "puberty_age_days": 900,
     "menopause_age_days": 9000,
@@ -940,6 +977,7 @@
     "is_dominant": true
   },
   "chaperone": {
+    "description": "Species from arachnophobe. Breed faster than human but have limited lives.",
     "species_name": "Chaperone",
     "coupling_rate": 0.55,
     "puberty_age_days": 548,
@@ -966,6 +1004,7 @@
     "is_dominant": true
   },
   "widow": {
+    "description": "There are far more female widows than male widows.",
     "species_name": "Widow",
     "coupling_rate": 0.22,
     "puberty_age_days": 5844,

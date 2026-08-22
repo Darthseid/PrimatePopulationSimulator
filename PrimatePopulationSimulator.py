@@ -686,9 +686,9 @@ class PrimateSimulation:
 if __name__ == "__main__":
     with open("demographics.json", "r") as f:
         demographics_data = json.load(f)
-   # starting_species = list(demographics_data.keys()) #This is for simulations, otherwise manually enter the starting species.
-    starting_species = ["shikamimi"]
+    starting_species = list(demographics_data.keys()) #This is for simulations, otherwise manually enter the starting species.
+  #  starting_species = ["shikamimi"]
     sim_locale = Locale.from_json("locales.json", "pampas")   
-    simulation = PrimateSimulation(starting_species, sim_locale)  # Load multiple species   
-    simulation.run_simulation(num_years=100.0) # Run the specific scenario
+    simulation = PrimateSimulation(starting_species, sim_locale, "generation_ship")  # Load multiple species   
+    simulation.run_simulation(num_years=1000.0) # Run the specific scenario
 
