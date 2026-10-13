@@ -114,7 +114,7 @@ class PrimateSimulation:
         cycle_days_passed = 0
         cycle_length_in_years = self.cycle_days / earth_year
         cycle_days = self.cycle_days # local alias: constant for the whole run, used in the per-primate loops
-        hybridization_type = "codominant"
+        hybridization_type = "midpoint"
 
         if self.cycle_days <= 0: # Safety check
             cycle_interval = 1
