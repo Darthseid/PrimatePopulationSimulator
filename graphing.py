@@ -9,17 +9,27 @@ earth_year = 365.2422
 
 def log_population_stats(current_day, population, history, cycle, births, deaths, eligible):
         total_pop = len(population)
-        
+
+        # One pass over the population gathers everything the report needs. This used to be three separate scans
+        # (ages, sexes, species), and the species string was rebuilt from scratch for every individual.
+        ages_in_years = []
+        females = 0
+        species_counts = {}
+        for p in population:
+                ages_in_years.append(p.age_years)
+                if p.is_female:
+                        females += 1
+                name = p.params.species_name
+                species_counts[name] = species_counts.get(name, 0) + 1
+
         median_age_years = 0.0
         if total_pop > 0:
-                ages_in_years = np.array([p.age_years for p in population])
-                median_age_years = np.median(ages_in_years)
+                median_age_years = np.median(np.array(ages_in_years))
 
         print(f"\n--- Cycle: {cycle} (Day: {current_day}) Year: {current_day / earth_year:.1f} ---")
         print(f"Total Population: {total_pop:,d}")
         print(f"  - Median Age: {median_age_years:.1f} years")
 
-        females = sum(1 for p in population if p.is_female)
         males = total_pop - females
         sex_ratio = males / females if females > 0 else float('inf')
         print(f"  - Females: {females:,d}")
@@ -31,11 +41,7 @@ def log_population_stats(current_day, population, history, cycle, births, deaths
             print(f"Deaths This Cycle: {deaths:,d}")
             print(f"Potential Mothers: {eligible:,d}")
 
-        species_counts = {}
-        for p in population:
-            name = p.params.species_name
-            species_counts[name] = species_counts.get(name, 0) + 1     
-            species_str = ", ".join([f"{name}: {count:,d}" for name, count in species_counts.items()])   
+        species_str = ", ".join([f"{name}: {count:,d}" for name, count in species_counts.items()])
         if species_str:
             print(f"  - Species: {species_str}")
 

@@ -13,7 +13,7 @@ earth_year = 365.2422
 GOMPERTZ_A = 0.0001 # Old-age mortality: hazard per year = A * e^(B * biological age)
 GOMPERTZ_B = 0.082
 SEQUENT_TRANSITION_YEARS = 12783 / earth_year # Age at which sequential hermaphrodites switch sex
-starting_population = 200
+starting_population = 100
 
 class PrimateSimulation:
     """
@@ -115,6 +115,11 @@ class PrimateSimulation:
         cycle_length_in_years = self.cycle_days / earth_year
         cycle_days = self.cycle_days # local alias: constant for the whole run, used in the per-primate loops
         hybridization_type = "midpoint"
+        marriage_type = "monogamy" # The only marriage type the cycle loop uses.
+        # find_union_for_primate only reads the sampled unions (its `active_unions` argument) for polygyny, polyandry and
+        # polygamy. In monogamy they are never read, so drawing them every coupling attempt (a 60-person random.sample, a set
+        # of their unions, a slice) is pure overhead. They are only built when the marriage type can use them.
+        needs_union_sample = marriage_type != "monogamy"
 
         if self.cycle_days <= 0: # Safety check
             cycle_interval = 1
@@ -189,6 +194,7 @@ class PrimateSimulation:
             # as a new attribute on Primate, so no mutable state is duplicated on the objects.
             new_age_years = []
             non_aquatic_count = 0
+            seasonal_count = 0 # survivors whose species is a seasonal mater (counted here so later phases need not scan for them)
             for primate in self.population:
                 params = primate.params
                 age_days = primate.age_days
@@ -261,6 +267,8 @@ class PrimateSimulation:
 
                 new_population.append(primate)
                 new_age_years.append(age_years)
+                if params.seasonal_mater is not False: # exactly the complement of the `is False` filter used for off-season coupling below
+                    seasonal_count += 1
                 if not params.is_aquatic:
                     non_aquatic_count += 1
                 
@@ -295,9 +303,13 @@ class PrimateSimulation:
                 density_penalty = min(1, 100 / inhabitants_per_sq_km) # That way below 100/km² has no advantage.
                 genetic_adjuster *= density_penalty
 
-            coupling_population = new_population if is_mating_season else [p for p in new_population if p.params.seasonal_mater is False] # Skip seasonal maters during off-season
-            if not is_mating_season or self.cycle_days >= 335: # Seasonal maters form new couples every season.
-                coupled_seasonal = [p for p in new_population 
+            # With no seasonal maters alive there is nothing to filter out and nothing to uncouple, so both scans are skipped.
+            if is_mating_season or seasonal_count == 0:
+                coupling_population = new_population
+            else:
+                coupling_population = [p for p in new_population if p.params.seasonal_mater is False] # Skip seasonal maters during off-season
+            if seasonal_count > 0 and (not is_mating_season or self.cycle_days >= 335): # Seasonal maters form new couples every season.
+                coupled_seasonal = [p for p in new_population
                                     if p.union is not None and p.params.seasonal_mater]
                 for p in coupled_seasonal:
                     if p.union:
@@ -325,9 +337,11 @@ class PrimateSimulation:
                     if not (p.is_female and (p.age_days / earth_year) * earth_year >= menopause_threshold) #This excludes post-menopausal females.
                 }
                 partner_pool_list = list(partner_pool)
-                coupled_primates = [p for p in coupling_population if p.union is not None]         
                 pool_sample_size = min(len(partner_pool), 20) #Limit sample size for performance (constant inside the loop)
-                union_sample_size = min(len(coupled_primates), pool_sample_size * 3) #Larger since there are more people than unions 
+                sample_unions = []
+                if needs_union_sample:
+                    coupled_primates = [p for p in coupling_population if p.union is not None]
+                    union_sample_size = min(len(coupled_primates), pool_sample_size * 3) #Larger since there are more people than unions
                 for primate in eligible_for_coupling:
                         
                     if not (random.random() < marriage_chance):
@@ -338,10 +352,11 @@ class PrimateSimulation:
                         
                     if pool_sample_size > 0:
                             local_pool = random.sample(partner_pool_list, pool_sample_size)
-                            sampled_people = random.sample(coupled_primates, union_sample_size)
-                            unique_sampled_unions = list({p.union for p in sampled_people})
-                            sample_unions = unique_sampled_unions[:pool_sample_size] #This is all necessary to improve performance and to randomize spouses more.
-                    find_union_for_primate(primate, local_pool, "monogamy", sample_unions)
+                            if needs_union_sample:
+                                sampled_people = random.sample(coupled_primates, union_sample_size)
+                                unique_sampled_unions = list({p.union for p in sampled_people})
+                                sample_unions = unique_sampled_unions[:pool_sample_size] #This is all necessary to improve performance and to randomize spouses more.
+                    find_union_for_primate(primate, local_pool, marriage_type, sample_unions)
 
             current_day = self.current_day
             for mother, mother_age_years in zip(new_population, new_age_years):
@@ -552,8 +567,9 @@ class PrimateSimulation:
             avail_grass = self.locale.ruminant_calories * self.cycle_days * famine_modifier
             avail_water = self.locale.water_availability_m3 * self.cycle_days 
             final_population = []
+            coupled_survivors = [] # survivors still in a union; filled during the feeding loop, used by the union cleanup at the end of the cycle
             
-            current_living = list(self.population)
+            current_living = self.population # a fresh list (survivors + newborns) that nothing else references, so it can be shuffled in place
             random.shuffle(current_living) 
             
             for p in current_living:
@@ -589,6 +605,8 @@ class PrimateSimulation:
                     fed = avail_water >= 0 #merfolk need food & water.
                 if fed:
                     final_population.append(p)
+                    if p.union is not None: # a survivor's own union cannot change for the rest of the loop (only a dying member's can)
+                        coupled_survivors.append(p)
                 else:
                     death_counter += 1                 
                     try: # Track childless/had_child for starvation deaths (ignore pre-pubescent)
@@ -627,9 +645,8 @@ class PrimateSimulation:
                 print("Reason: Population is extinct.")
                 break
 
-            coupled_primates = [p for p in self.population if p.union]
             verified_unions = set() # A union that is not dissolved can't change inside this loop (only dissolved ones are modified), so check each one once.
-            for primate in coupled_primates:
+            for primate in coupled_survivors:
                 union = primate.union
                 if union in verified_unions:
                     continue
@@ -720,8 +737,8 @@ if __name__ == "__main__":
     with open("demographics.json", "r") as f:
         demographics_data = json.load(f)
     #starting_species = list(demographics_data.keys()) #This is for simulations, otherwise manually enter the starting species.
-    starting_species = [ "medieval_human", "coonfolk"]
+    starting_species = [ "royal_human"]
     sim_locale = Locale.from_json("locales.json", "south_african_savanna")   
     simulation = PrimateSimulation(starting_species, sim_locale)  # Load multiple species   
-    simulation.run_simulation(num_years=200.0) # Run the specific scenario
+    simulation.run_simulation(num_years=80.0) # Run the specific scenario
 
