@@ -51,7 +51,8 @@ def run_once(species, start_population, cycles, seed, locale_name):
 
     ran = max(1, round(sim.current_day / sim.cycle_days))
     history_pops = [h["population"] for h in sim.history]
-    return seconds, ran, len(sim.population), statistics.mean(history_pops)
+    end_population = len(sim.state) if hasattr(sim, "state") else len(sim.population) # array state when available
+    return seconds, ran, end_population, statistics.mean(history_pops)
 
 
 def main():

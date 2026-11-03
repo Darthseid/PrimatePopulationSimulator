@@ -1,5 +1,5 @@
 """
-Invariant tests for the population simulation loop.
+Invariant tests for the population simulation loop (array-based population state).
 
     python -m unittest test_simulation_invariants -v        (run from the repository folder)
 
@@ -23,7 +23,8 @@ os.environ.setdefault("MPLBACKEND", "Agg")   # never open a plot window
 import numpy as np
 
 import PrimatePopulationSimulator as sim_module
-from PopulationObjects import Locale, Primate, SimulationParameters, Union, find_union_for_primate
+import population_ops as ops
+from PopulationObjects import Locale, Primate, SimulationParameters
 from graphing import log_population_stats
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -70,21 +71,31 @@ def is_mating_season(sim):
 
 class InvariantMixin:
     def check_population(self, sim, label=""):
-        pop = sim.population
-        ids = {id(p) for p in pop}
-        self.assertEqual(len(ids), len(pop), f"{label}: the same individual is in the population twice")
+        state = sim.state
+        n = len(state)
+        for name, _ in state.COLUMNS:
+            self.assertEqual(len(getattr(state, name)), n, f"{label}: column {name} has the wrong length")
+        self.assertTrue(state.alive.all(), f"{label}: a dead individual was left in the population")
+        self.assertTrue(np.isfinite(state.age_days).all(), f"{label}: an age is not a number")
+        self.assertTrue((state.params_id < sim.table.size).all() and (state.species_id < len(sim.names.names)).all())
+        stats = ops.UnionStats(state, sim.table)
+        self.assertFalse(stats.dissolved.any(), f"{label}: a dissolved union survived the end-of-cycle cleanup")
+        self.assertTrue((stats.size >= 1).all())
 
-        unions = {}
-        for p in pop:
-            if p.union is None:
-                continue
-            self.assertIn(p, p.union.members, f"{label}: individual points at a union that does not list them")
-            unions[id(p.union)] = p.union
-        for union in unions.values():
-            self.assertFalse(union.is_dissolved(), f"{label}: a dissolved union is still referenced after cleanup")
-            for member in union.members:
-                self.assertIn(id(member), ids, f"{label}: a union still holds someone no longer in the population")
-                self.assertIs(member.union, union, f"{label}: a union member does not point back at its union")
+
+def tag_individuals(sim):
+    """
+    Writes a unique number into each individual's next_breeding_day (which also stops everyone breeding), so the same
+    individual can be recognised again after a cycle. Arrays have no object identity to follow.
+    """
+    n = len(sim.state)
+    sim.state.next_breeding_day[:] = 1e12 + np.arange(n)
+
+
+def tags_of(sim):
+    tags = sim.state.next_breeding_day - 1e12
+    assert np.array_equal(tags, np.round(tags)) and tags.min(initial=0) >= 0, "an untagged individual appeared"
+    return tags.astype(int)
 
 
 class TestPopulationInvariants(InvariantMixin, unittest.TestCase):
@@ -93,58 +104,50 @@ class TestPopulationInvariants(InvariantMixin, unittest.TestCase):
         "orc,elf,goblin", "modern_human,neanderthal", "shikamimi,orc",
     ]
 
-    def test_no_duplicates_resurrection_stale_unions_or_miscounts(self):
+    def test_state_stays_consistent_and_the_report_agrees_with_it(self):
         for species in self.SPECIES:
             with self.subTest(species=species):
                 sim = make_sim(species, 200)
-                dead = {}   # id -> object (kept alive so ids cannot be reused by newborns)
                 for cycle in range(1, 11):
-                    before = {id(p): p for p in sim.population}
+                    before = len(sim.state)
                     out = step(sim)
-                    now = {id(p): p for p in sim.population}
                     self.check_population(sim, f"{species} cycle {cycle}")
-
-                    self.assertFalse(set(now) & set(dead), f"{species}: someone who died came back")
-                    dead.update({i: p for i, p in before.items() if i not in now})
-
                     # The simulator's own summary must agree with the actual population.
-                    self.assertEqual(printed_number(out, "Final Population"), len(sim.population))
+                    self.assertEqual(printed_number(out, "Final Population"), len(sim.state))
                     births, deaths = printed_number(out, "Total Births"), printed_number(out, "Total Deaths")
-                    self.assertGreaterEqual(len(sim.population), len(before) - deaths)
+                    self.assertGreaterEqual(len(sim.state), before - deaths)
                     if "double" not in species:   # 'double' respawns dead females as new males without a birth
-                        self.assertLessEqual(len(sim.population), len(before) + births)
-                    if not sim.population:
+                        self.assertLessEqual(len(sim.state), before + births)
+                    if not len(sim.state):
                         break
 
     def test_each_survivor_ages_exactly_once_per_cycle(self):
         for species in ("modern_human", "merlin", "sequent"):
             with self.subTest(species=species):
                 sim = make_sim(species, 200)
+                tag_individuals(sim)
                 for _ in range(8):
-                    before = {id(p): (p, p.age_days, p.is_female) for p in sim.population}   # keeps refs: no id reuse
+                    age_before, female_before = sim.state.age_days.copy(), sim.state.is_female.copy()
                     step(sim)
-                    for p in sim.population:
-                        if id(p) not in before:
-                            continue   # newborn
-                        _, age_before, female_before = before[id(p)]
-                        if p.is_female and not female_before:
-                            self.assertEqual(p.age_days, 5479, "a sex change resets age to 15 years")
-                        else:
-                            expected = age_before - sim.cycle_days if p.params.ages_backward else age_before + sim.cycle_days
-                            self.assertEqual(p.age_days, expected)
+                    tags = tags_of(sim)
+                    backward = sim.table.ages_backward[sim.state.params_id]
+                    expected = age_before[tags] + np.where(backward, -sim.cycle_days, sim.cycle_days)
+                    changed_sex = sim.state.is_female & ~female_before[tags]
+                    expected = np.where(changed_sex, 5479, expected)   # a sex change resets age to 15 years
+                    np.testing.assert_array_equal(sim.state.age_days, expected)
+                    tag_individuals(sim)   # re-tag: the tags are positions in the (compacted, reordered) population
 
     def test_sequential_hermaphrodites_change_sex(self):
         sim = make_sim("sequent", 300)
         changed = 0
         for _ in range(30):
-            before = {id(p): (p, p.is_female) for p in sim.population}
+            tag_individuals(sim)
+            female_before = sim.state.is_female.copy()
             step(sim)
-            for p in sim.population:
-                if id(p) in before and p.is_female and not before[id(p)][1]:
-                    changed += 1
-            self.assertFalse([p for p in sim.population if not p.is_female and p.age_days / EARTH_YEAR > sim_module.SEQUENT_TRANSITION_YEARS],
-                             "a male older than the transition age was left unchanged")
-            if not sim.population:
+            changed += int(np.count_nonzero(sim.state.is_female & ~female_before[tags_of(sim)]))
+            old_males = ~sim.state.is_female & (sim.state.age_days / EARTH_YEAR > sim_module.SEQUENT_TRANSITION_YEARS)
+            self.assertFalse(old_males.any(), "a male older than the transition age was left unchanged")
+            if not len(sim.state):
                 break
         self.assertGreater(changed, 0, "no sex change happened, so this test exercised nothing")
 
@@ -158,9 +161,10 @@ class TestPopulationInvariants(InvariantMixin, unittest.TestCase):
             # current_day has already advanced, which is the day the cycle just run used
             if not is_mating_season(sim):
                 off_season_cycles += 1
-                self.assertFalse([p for p in sim.population if p.params.seasonal_mater and p.union is not None],
+                seasonal = sim.table.seasonal_truthy[sim.state.params_id]
+                self.assertFalse((seasonal & (sim.state.union_id >= 0)).any(),
                                  "a seasonal mater was coupled at the end of an off-season cycle")
-            if not sim.population:
+            if not len(sim.state):
                 break
         self.assertGreater(off_season_cycles, 0, "no off-season cycle occurred, so this test exercised nothing")
 
@@ -169,7 +173,35 @@ class TestPopulationInvariants(InvariantMixin, unittest.TestCase):
         for _ in range(25):
             step(sim)
             self.check_population(sim, "hybrids")
-        self.assertTrue([p for p in sim.population if "-" in p.params.species_name], "no hybrid was ever born")
+        self.assertTrue([name for name in sim.state.species_counts() if "-" in name], "no hybrid was ever born")
+
+    def test_a_cycle_creates_no_primate_objects(self):
+        """The point of the array state: the cycle works on arrays, not on one Python object per individual."""
+        created = []
+        original_init = Primate.__init__
+
+        def counting_init(self, *args, **kwargs):
+            created.append(1)
+            original_init(self, *args, **kwargs)
+
+        sim = make_sim("modern_human", 500)
+        Primate.__init__ = counting_init
+        try:
+            for _ in range(5):
+                step(sim)
+        finally:
+            Primate.__init__ = original_init
+        self.assertEqual(created, [])
+
+    def test_the_same_seed_gives_the_same_run(self):
+        """Seeded runs used to differ between processes (iteration order of sets of objects); they no longer do."""
+        runs = []
+        for _ in range(2):
+            sim = make_sim("modern_human,neanderthal", 300, seed=7)
+            for _ in range(10):
+                step(sim)
+            runs.append((len(sim.state), sim.state.age_days.sum(), sim.state.children.sum(), sim.state.union_id.max()))
+        self.assertEqual(runs[0], runs[1])
 
 
 class TestEndConditions(InvariantMixin, unittest.TestCase):
@@ -177,7 +209,7 @@ class TestEndConditions(InvariantMixin, unittest.TestCase):
         for keep_female in (True, False):
             with self.subTest(keep_female=keep_female):
                 sim = make_sim("modern_human", 200)
-                sim.population = [p for p in sim.population if p.is_female == keep_female]
+                sim.state = sim.state.take(sim.state.is_female == keep_female)
                 self.assertIn("One gender has gone extinct", step(sim))
 
     def test_everyone_starves_without_food(self):
@@ -185,20 +217,20 @@ class TestEndConditions(InvariantMixin, unittest.TestCase):
         locale.carnivore_calories = locale.herbivore_calories = locale.ruminant_calories = 0
         sim = make_sim("modern_human", 200, locale=locale)
         out = step(sim)
-        self.assertEqual(len(sim.population), 0)
+        self.assertEqual(len(sim.state), 0)
         self.assertIn("extinct", out)
 
     def test_food_allocation_never_exceeds_what_exists(self):
         locale = Locale.from_json("locales.json", "south_african_savanna")
         sim = make_sim("modern_human", 300, locale=locale)
-        need_of = lambda people: sum(p.get_caloric_need() * sim.cycle_days for p in people)
+        need_of = lambda state: float(ops.caloric_need(state, sim.table).sum() * sim.cycle_days)
         # modern humans are omnivores: they eat vegetation first, meat second. Leave only meat and give ~30% of need.
         locale.herbivore_calories = locale.ruminant_calories = locale.water_availability_m3 = 0
-        locale.carnivore_calories = 0.3 * need_of(sim.population) / sim.cycle_days
-        start = len(sim.population)
+        locale.carnivore_calories = 0.3 * need_of(sim.state) / sim.cycle_days
+        start = len(sim.state)
         step(sim)
-        self.assertLess(len(sim.population), start, "nobody starved, so this test exercised nothing")
-        self.assertLessEqual(need_of(sim.population), locale.carnivore_calories * sim.cycle_days + 1e-6)
+        self.assertLess(len(sim.state), start, "nobody starved, so this test exercised nothing")
+        self.assertLessEqual(need_of(sim.state), locale.carnivore_calories * sim.cycle_days + 1e-6)
         self.check_population(sim, "after starvation")
 
 
@@ -226,8 +258,7 @@ class TestDisasters(InvariantMixin, unittest.TestCase):
         sim = make_sim("modern_human", 800, module=module)
         self.force(sim, {"Warfare"})
         # resolve_warfare pairs off the post-puberty, not-elderly males and kills one of each pair
-        combatants = [p for p in sim.population if not p.is_female
-                      and p.params.puberty_age_days <= (p.age_days / EARTH_YEAR) * EARTH_YEAR < p.params.lifespan_days]
+        combatants = ops.combatants_of(sim.state, sim.table)
         self.assertGreater(len(combatants), 10, "too few combatants to test anything")
         out = step(sim)
         self.assertIn("DISASTER TRIGGERED: Warfare", out)
@@ -246,57 +277,9 @@ class TestDisasters(InvariantMixin, unittest.TestCase):
             self.assertIn(f"DISASTER TRIGGERED: {name}", out)
         for _ in range(5):
             self.check_population(sim, "under disasters")
-            if not sim.population:
+            if not len(sim.state):
                 break
             step(sim)
-
-
-class TestMating(unittest.TestCase):
-    def setUp(self):
-        self.params = SimulationParameters.from_json("demographics.json", "modern_human")
-
-    def person(self, female, age_days):
-        return Primate("modern_human", female, age_days, True, self.params)
-
-    def test_opposite_sexes_pair_and_same_sexes_do_not(self):
-        man, woman = self.person(False, 9000), self.person(True, 9000)
-        find_union_for_primate(man, [woman], "monogamy", [])
-        self.assertIsNotNone(man.union)
-        self.assertIs(man.union, woman.union)
-        self.assertCountEqual(man.union.members, [man, woman])
-
-        other_woman = self.person(True, 9000)
-        find_union_for_primate(other_woman, [self.person(True, 9000)], "monogamy", [])
-        self.assertIsNone(other_woman.union)
-
-    def test_monogamy_picks_the_closest_age_and_ignores_the_unions_argument(self):
-        """The cycle loop no longer samples unions for monogamy; this is the property that makes that safe."""
-        chosen = []
-        for active_unions in ([], [Union(), Union("monogamy", 2)]):
-            man = self.person(False, 9000)
-            pool = [self.person(True, age) for age in (5000, 8700, 9400, 12000)]
-            find_union_for_primate(man, pool, "monogamy", active_unions)
-            chosen.append(man.union.members[1].age_days)
-        self.assertEqual(chosen, [8700, 8700])
-
-    def test_cycle_loop_draws_no_union_sample_for_monogamy(self):
-        sizes = []
-        real_sample = random.sample
-
-        def recording_sample(population, k, *a, **kw):
-            if population and isinstance(population[0], Primate): # the end-of-run report also samples up to 40 *Unions*; ignore that
-                sizes.append(k)
-            return real_sample(population, k, *a, **kw)
-
-        random.sample = recording_sample
-        try:
-            sim = make_sim("modern_human", 500)
-            for _ in range(4):
-                step(sim)
-        finally:
-            random.sample = real_sample
-        self.assertTrue(sizes, "no partners were ever sampled, so this test exercised nothing")
-        self.assertLessEqual(max(sizes), 20, "something is still drawing the 60-person union sample")
 
 
 class TestStatsLogging(unittest.TestCase):
@@ -319,6 +302,18 @@ class TestStatsLogging(unittest.TestCase):
         self.assertIn(f"{orc.species_name}: 3", text)
         self.assertEqual(history[0]["population"], len(people))
         self.assertEqual(history[0]["females"], females)
+
+        # the array state must produce exactly the same report
+        from population_state import NameTable, ParameterTable, PopulationState
+        names = NameTable()
+        table = ParameterTable(names)
+        state = PopulationState.from_primates(people, table, names)
+        array_history = []
+        array_out = io.StringIO()
+        with contextlib.redirect_stdout(array_out):
+            log_population_stats(1000, state, array_history, 4, 5, 6, 7)
+        self.assertEqual(array_out.getvalue(), text)
+        self.assertEqual(array_history, history)
 
 
 if __name__ == "__main__":

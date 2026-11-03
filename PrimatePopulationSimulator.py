@@ -3,21 +3,25 @@ import math
 import json
 import time
 
-from PopulationObjects import Primate, Locale, convert_years_to_string, find_union_for_primate, Disaster
+import numpy as np
+
+from PopulationObjects import Primate, Locale, convert_years_to_string, Disaster
 from PopulationObjects import SimulationParameters
-from PopulationObjects import calculate_age_based_fertility
-from graphing import log_population_stats, display_population_pyramid, plot_population_history, resolve_warfare
+from population_state import NameTable, ParameterTable, PopulationState
+import population_ops as ops
+from population_ops import GOMPERTZ_A, GOMPERTZ_B, SEQUENT_TRANSITION_YEARS
+from graphing import log_population_stats, display_population_pyramid, plot_population_history
 from typing import List
 
 earth_year = 365.2422
-GOMPERTZ_A = 0.0001 # Old-age mortality: hazard per year = A * e^(B * biological age)
-GOMPERTZ_B = 0.082
-SEQUENT_TRANSITION_YEARS = 12783 / earth_year # Age at which sequential hermaphrodites switch sex
-starting_population = 100
+starting_population = 99
 
 class PrimateSimulation:
     """
     Manages and runs the primate population simulation.
+
+    The controller layer: it owns the clock, the disasters, the counters and the reporting, and calls the vectorized
+    operations in population_ops.py on the array-based PopulationState (population_state.py) for each phase of a cycle.
     """
     def __init__(self, species_names: List[str], locale: Locale, scenario_name: str = None):
         self.species_params = {
@@ -25,15 +29,31 @@ class PrimateSimulation:
             for name in species_names
         }
         self.locale = locale
-        self.population: list[Primate] = []
         self.current_day = 0
         self.history = []
+
+        self.rng = np.random.default_rng(random.getrandbits(64))
+        self.names = NameTable()  # Seeding python's `random` before building a simulation still makes the whole run reproducible: this
+        self.table = ParameterTable(self.names)
+        for params in self.species_params.values():
+            self.table.row_for(params)
+        self.state = PopulationState(context=(self.table, self.names))
+        self._fixed_blends = {}   # (mother row, father row) -> hybrid row, see make_hybrid_row
 
         self.disasters = Disaster.from_json("disasters.json")
 
         self.cycle_days = min(params.interbirth_interval_days for params in self.species_params.values())       
         print(f"Locale: {self.locale.name} ({self.locale.biome_type})")
         self.create_initial_population(scenario_name)
+
+    @property
+    def population(self):
+        """The population as Primate/Union objects. Built on demand (slow for big populations): for tests and inspection."""
+        return self.state.to_primates(self.table, self.names)
+
+    @population.setter
+    def population(self, primates):
+        self.state = PopulationState.from_primates(primates, self.table, self.names, self.state._union_counter)
 
     def create_initial_population(self, scenario_name: str = None):
         """
@@ -51,17 +71,17 @@ class PrimateSimulation:
                 scenario_data = scenarios[scenario_name]["population"]
                 description = scenarios[scenario_name].get("description", "No description provided.")
                 print(f"Scenario Description: {description}")
+                primates = []
                 for primate_data in scenario_data:    
                     species_name = primate_data["species_name"]
-                    primate = Primate(
+                    primates.append(Primate(
                         species_name=species_name,
                         is_female=primate_data["is_female"],
                         age_days=primate_data["age_days"], # Primate __init__ will handle conversion
                         is_initially_fertile=primate_data["is_initially_fertile"],
                         params=self.species_params[species_name] # If a species is missing, this will raise a KeyError
-                    )
-                    
-                    self.population.append(primate)
+                    ))
+                self.population = primates
                 return
 
             except FileNotFoundError:
@@ -74,6 +94,7 @@ class PrimateSimulation:
     def create_random_population(self):
         print("Creating a randomized initial population.")
         species_list = list(self.species_params.keys())
+        ages, females, species_ids, params_ids, fertile = [], [], [], [], []
         for _ in range(starting_population): # Randomly pick a species        
             species_name = random.choice(species_list)
             params = self.species_params[species_name]
@@ -84,21 +105,42 @@ class PrimateSimulation:
                     is_female = False
                 else:
                     is_female = True
-            is_initially_fertile = random.random() > params.sterile_chance
-            primate = Primate(
-                species_name = species_name,
-                is_female=is_female,
-                age_days=start_age,
-                is_initially_fertile=is_initially_fertile,
-                params=params
-            )
-            self.population.append(primate)
-        print(f"Initial population created: {len(self.population)} individuals (random species).")
+            ages.append(start_age)
+            females.append(is_female)
+            fertile.append(random.random() > params.sterile_chance)
+            species_ids.append(self.names.id(species_name)) # founders are named by their profile key, as before
+            params_ids.append(self.table.row_for(params))
+        empty = PopulationState(context=(self.table, self.names))
+        self.state = PopulationState.newborns(empty, len(ages), ages, females, species_ids, params_ids, fertile)
+        print(f"Initial population created: {len(self.state)} individuals (random species).")
+
+    BLEND_RANDOM_FIELDS = ("diet_type", "is_dominant", "seasonal_mater", "ages_backward", "lopsided_sex_lifespan",
+                           "has_sequent_sex_transition", "respawn_as_male", "is_aquatic", "kid_fodder")   # This is for hybrids.
+
+    def make_hybrid_row(self, mother_row, father_row):
+        """Parameter-table row for a child of two parent rows, using the blended 'midpoint' hybrid rules."""
+        row = self._fixed_blends.get((mother_row, father_row))
+        if row is not None:
+            return row
+        mother, father = self.table.objects[mother_row], self.table.objects[father_row]
+        row = self.table.row_for_equivalent(SimulationParameters.from_parents(mother, father))
+        if all(getattr(mother, f) == getattr(father, f) for f in self.BLEND_RANDOM_FIELDS):
+            self._fixed_blends[(mother_row, father_row)] = row
+        return row
+
+    def _describe_union(self, label):
+        members = np.flatnonzero(self.state.union_id == label)
+        parts = []
+        for i in members:
+            sex = '♀️ ' if self.state.is_female[i] else '♂️ '
+            name = self.names[int(self.state.species_id[i])]
+            parts.append(f"{sex}{name}( Age: {self.state.age_days[i] / earth_year:.0f} Kids: {int(self.state.children[i])})")
+        return f"<Union (monogamy{len(members)}/{max(2, len(members))}) | Members: [{', '.join(parts)}]>\n"
 
     def run_simulation(self, num_years: float):
         start_time = time.time()  # Add this at the start of run_simulation
         print("--- Simulation Starting ---")
-        log_population_stats(self.current_day, self.population, self.history, 0, 0, 0, 0)
+        log_population_stats(self.current_day, self.state, self.history, 0, 0, 0, 0)
 
         total_births = 0
         total_deaths = 0
@@ -109,17 +151,19 @@ class PrimateSimulation:
         female_had_child = 0
         female_childless = 0
 
+        def add_tally(tally): # (female_had, female_childless, male_had, male_childless) from ops.count_adult_deaths
+            nonlocal female_had_child, female_childless, male_had_child, male_childless
+            female_had_child += tally[0]
+            female_childless += tally[1]
+            male_had_child += tally[2]
+            male_childless += tally[3]
+
         total_days = num_years * earth_year
         cycle = 1
         cycle_days_passed = 0
         cycle_length_in_years = self.cycle_days / earth_year
-        cycle_days = self.cycle_days # local alias: constant for the whole run, used in the per-primate loops
-        hybridization_type = "midpoint"
-        marriage_type = "monogamy" # The only marriage type the cycle loop uses.
-        # find_union_for_primate only reads the sampled unions (its `active_unions` argument) for polygyny, polyandry and
-        # polygamy. In monogamy they are never read, so drawing them every coupling attempt (a 60-person random.sample, a set
-        # of their unions, a slice) is pure overhead. They are only built when the marriage type can use them.
-        needs_union_sample = marriage_type != "monogamy"
+        cycle_days = self.cycle_days
+        marriage_type = "monogamy"
 
         if self.cycle_days <= 0: # Safety check
             cycle_interval = 1
@@ -131,17 +175,9 @@ class PrimateSimulation:
             self.current_day += self.cycle_days
             cycle_days_passed += self.cycle_days
             
-            new_population = []
             birth_counter = 0
             death_counter = 0
             eligible_female_counter = 0
-            mothers_who_gave_birth = set()
-            newborns = []
-            
-            female_count = 0
-            male_count = 0
-            fertile_male_count = 0
-            fertile_female_count = 0
             piglet_calories = 0
 
             day_of_year = self.current_day % earth_year # --- CALCULATE SEASON ---
@@ -150,7 +186,7 @@ class PrimateSimulation:
             active_disasters = []
             disasters_enabled = False
             for disaster in self.disasters:
-                if disaster.try_trigger(self.current_day, self.cycle_days, len(self.population)) and disasters_enabled:
+                if disaster.try_trigger(self.current_day, self.cycle_days, len(self.state)) and disasters_enabled:
                     print(f"*** DISASTER TRIGGERED: {disaster.name} ***")
                 if disaster.is_active and disasters_enabled:
                     if disaster.check_end(self.current_day):
@@ -159,501 +195,115 @@ class PrimateSimulation:
                         active_disasters.append(disaster)
             for disaster in active_disasters:
                 if disaster.name == "Warfare":                     
-                        combatants = [] # Identify combatants: Males, Post-Puberty, Not-Elderly
-                        for p in self.population:
-                            if p.is_female:
-                                continue
-                            combatant_age_days = p.age_years * earth_year # once per male (was computed twice)
-                            if combatant_age_days >= p.params.puberty_age_days and combatant_age_days < p.params.lifespan_days:
-                                combatants.append(p)
-                        
-                        surviving_males = resolve_warfare(combatants)                     
-                        surviving_set = set(surviving_males) # O(1) membership; `p not in <list>` made this O(n^2)
-                        killed_combatants = [p for p in combatants if p not in surviving_set]
-                        war_deaths = len(killed_combatants)
-                        death_counter += war_deaths  # Determine which combatants died and update childless/had_child counters
-                        for killed in killed_combatants:            
-                            if killed.age_years * earth_year >= killed.params.puberty_age_days:
-                                if killed.is_female: # Only count if at or past puberty (combatants are filtered to be post-puberty already)
-                                    if killed.number_of_healthy_children > 0:
-                                        female_had_child += 1
-                                    else:
-                                        female_childless += 1
-                                else:
-                                    if killed.number_of_healthy_children > 0:
-                                        male_had_child += 1
-                                    else:
-                                        male_childless += 1
-                        
-                        combatant_set = set(combatants)
-                        non_combatants = [p for p in self.population if p not in combatant_set]
-                        self.population = non_combatants + surviving_males # Reconstruct population: Non-combatants + Survivors
+                    combatants = ops.combatants_of(self.state, self.table) # Males, Post-Puberty, Not-Elderly
+                    _, killed = ops.resolve_warfare(self.state, self.table, self.rng, combatants)
+                    death_counter += len(killed)
+                    killed_mask = np.zeros(len(self.state), dtype=bool)
+                    killed_mask[killed] = True
+                    add_tally(ops.count_adult_deaths(self.state, killed_mask, self.table))
+                    self.state = self.state.take(~killed_mask)
 
-            # Ages are calculated once per individual here and reused by every later phase of this cycle
-            # (age_days only changes in this loop). They live in a list parallel to new_population rather than
-            # as a new attribute on Primate, so no mutable state is duplicated on the objects.
-            new_age_years = []
-            non_aquatic_count = 0
-            seasonal_count = 0 # survivors whose species is a seasonal mater (counted here so later phases need not scan for them)
-            for primate in self.population:
-                params = primate.params
-                age_days = primate.age_days
-                if params.ages_backward:
-                    age_days -= cycle_days # Age decreases
-                else:
-                    age_days += cycle_days # Age increases
-                primate.age_days = age_days
-                age_years = age_days / earth_year
-                is_female = primate.is_female
+            state = self.state # ---- 1. Aging and old-age death. Deaths leave their partner in a one-person union until the cleanup at the end of the cycle, exactly as before.
+            reference = self.table.objects[int(state.params_id[-1])]
+            aging = ops.age_and_old_age_deaths(state, self.table, self.names, self.rng, cycle_days, cycle_length_in_years)
+            total_OldAgeDeaths += aging.old_age_deaths
+            death_counter += aging.old_age_deaths
+            add_tally(aging.childless_tally)
+            newborns = aging.respawned
+            state = state.take(~aging.died) # survivors; union labels stay with them
+            age_years = state.age_days / earth_year # ages are calculated once here and reused by every later phase
 
-                Widow_multiplier = 1
-                if not is_female and params.lopsided_sex_lifespan:
-                    Widow_multiplier = 3
-                if params.has_sequent_sex_transition and not is_female and age_years > SEQUENT_TRANSITION_YEARS:
-                    primate.is_female = True
-                    is_female = True
-                    age_days = 5479 # 1b. Sequential hermaphrodite check
-                    primate.age_days = age_days
-                    age_years = age_days / earth_year # age_days changed, so refresh the cached age
-
-                died = False # --- 1c. Check Death (Merlin logic) ---               
-                if params.ages_backward:
-                    if age_days <= 0: # Death by old age for Merlins
-                        died = True
-                        total_OldAgeDeaths += 1
-                else: # Standard "old age" death check              
-                    if params.lifespan_years <= 0:
-                        mortality_rate_per_cycle = 0.01
-                    else:
-                        bio_age = (age_years * Widow_multiplier) * params.human_aging_factor
-                        if is_female:
-                            bio_age -= 4.5
-                        hazard_rate_per_year = GOMPERTZ_A * math.exp(GOMPERTZ_B * bio_age)
-                        mortality_rate_per_cycle = 1.0 - math.exp(-hazard_rate_per_year * cycle_length_in_years)
-
-                    if random.random() < mortality_rate_per_cycle:
-                        died = True
-                        total_OldAgeDeaths += 1
-                
-                if died:
-                    death_counter += 1         
-                    try: # Track childless/had_child for adults (ignore pre-pubescent deaths)
-                        is_adult = age_years * earth_year >= params.puberty_age_days
-                    except Exception:
-                        is_adult = False
-                    if is_adult:
-                        if is_female:
-                            if primate.number_of_healthy_children > 0:
-                                female_had_child += 1
-                            else:
-                                female_childless += 1
-                        else:
-                            if primate.number_of_healthy_children > 0:
-                                male_had_child += 1
-                            else:
-                                male_childless += 1        
-                    if params.respawn_as_male and is_female:  # --- NEW RESPAWN LOGIC (DOUBLES) ---
-                        respawned_male = Primate(
-                            species_name="Doubles",
-                            params=params,
-                            is_female=False,
-                            age_days=4748, #Age 13 years
-                            is_initially_fertile=random.random() > params.sterile_chance 
-                        )
-                        newborns.append(respawned_male) # Add to newborns list
-                    if primate.union:
-                        primate.union.remove_member(primate)              
-                    continue  # Primate died, don't add to new population                
-
-                new_population.append(primate)
-                new_age_years.append(age_years)
-                if params.seasonal_mater is not False: # exactly the complement of the `is False` filter used for off-season coupling below
-                    seasonal_count += 1
-                if not params.is_aquatic:
-                    non_aquatic_count += 1
-                
-                if is_female:
-                    female_count += 1
-                    if primate.is_fertile and params.puberty_age_days <= age_years * earth_year < params.menopause_age_days:
-                        fertile_female_count += 1
-                else:
-                    male_count += 1
-                    if primate.is_fertile and age_years * earth_year >= params.puberty_age_days:
-                        fertile_male_count += 1           
-           
-            if primate.params.is_hermaphrodite:
-                female_count = len(new_population) # Recalculate based on survivors
+            counts = ops.count_by_group(state, self.table, age_years)
+            female_count, male_count = counts.female, counts.male
+            fertile_female_count, fertile_male_count = counts.fertile_female, counts.fertile_male
+            if reference.is_hermaphrodite:
+                female_count = len(state) # Recalculate based on survivors
                 male_count = 0
                 fertile_male_count = 0
-                min_fertile_days = primate.params.puberty_age_days
-                max_fertile_days = primate.params.menopause_age_days
-                fertile_female_count = sum(1 for p, p_age_years in zip(new_population, new_age_years) if p.is_fertile and min_fertile_days <= p_age_years * earth_year < max_fertile_days)
+                fertile_female_count = ops.fertile_females_by_reference_rules(
+                    state, self.table, age_years, reference.puberty_age_days, reference.menopause_age_days)
                 breeding_population = fertile_female_count
-                marriage_chance = primate.params.coupling_rate
+                marriage_chance = reference.coupling_rate
             else:
                 breeding_population = (4 * fertile_male_count * fertile_female_count) / max(1, fertile_male_count + fertile_female_count)
                 sex_ratio = male_count / max(1, female_count)
-                marriage_chance = primate.params.coupling_rate * math.sqrt(sex_ratio) * cycle_length_in_years #This means women get paired off a lot when there are few of them, and rarely get paired off if they outnumber males a lot.
+                marriage_chance = reference.coupling_rate * math.sqrt(sex_ratio) * cycle_length_in_years #This means women get paired off a lot when there are few of them, and rarely get paired off if they outnumber males a lot.
 
             genetic_adjuster = min(1.0, breeding_population / 50.0) #This is the stand-in for incest. If the breeding population is low, mortality goes up.
 
-            if self.locale.area_km2 > 0: #Divide by Zero safety check.
-                #Species with the aquatic flag are excluded from land density (e.g., sea-dwellers); counted during the aging loop.
-                inhabitants_per_sq_km = non_aquatic_count / self.locale.area_km2 if non_aquatic_count > 0 else 1 # Avoid zero population with all merfolk
+            if self.locale.area_km2 > 0: #Divide by Zero safety check.      
+                inhabitants_per_sq_km = counts.non_aquatic / self.locale.area_km2 if counts.non_aquatic > 0 else 1 # Avoid zero population with all merfolk
                 density_penalty = min(1, 100 / inhabitants_per_sq_km) # That way below 100/km² has no advantage.
-                genetic_adjuster *= density_penalty
+                genetic_adjuster *= density_penalty      #Species with the aquatic flag are excluded from land density (e.g., sea-dwellers).
+      
+            p = state.params_id
+            seasonal_present = counts.seasonal > 0   # ---- 2. Coupling. Seasonal maters are uncoupled and sit out the off-season; with none alive both steps are skipped.
+            if seasonal_present and (not is_mating_season or self.cycle_days >= 335): # Seasonal maters form new couples every season.
+                ops.uncouple(state, (state.union_id >= 0) & self.table.seasonal_truthy[p])
+            can_couple = np.ones(len(state), dtype=bool)
+            if seasonal_present and not is_mating_season:
+                can_couple = ~self.table.seasonal_not_false[p] # Skip seasonal maters during off-season
 
-            # With no seasonal maters alive there is nothing to filter out and nothing to uncouple, so both scans are skipped.
-            if is_mating_season or seasonal_count == 0:
-                coupling_population = new_population
-            else:
-                coupling_population = [p for p in new_population if p.params.seasonal_mater is False] # Skip seasonal maters during off-season
-            if seasonal_count > 0 and (not is_mating_season or self.cycle_days >= 335): # Seasonal maters form new couples every season.
-                coupled_seasonal = [p for p in new_population
-                                    if p.union is not None and p.params.seasonal_mater]
-                for p in coupled_seasonal:
-                    if p.union:
-                        p.union.remove_member(p)
-       
-            puberty_threshold = primate.params.puberty_age_days
-            if coupling_population is new_population: # Mating season: reuse the ages computed in the aging loop
-                eligible_for_coupling = [
-                    p for p, p_age_years in zip(new_population, new_age_years)
-                    if p.union is None and 
-                       p.is_fertile and 
-                       p_age_years * earth_year >= puberty_threshold # Get all uncoupled, fertile individuals who are of age
-                ]
-            else:
-                eligible_for_coupling = [
-                    p for p in coupling_population
-                    if p.union is None and 
-                       p.is_fertile and 
-                       p.age_years * earth_year >= puberty_threshold
-                ]
-            if eligible_for_coupling:                          
-                menopause_threshold = primate.params.menopause_age_days
-                partner_pool = {
-                    p for p in eligible_for_coupling 
-                    if not (p.is_female and (p.age_days / earth_year) * earth_year >= menopause_threshold) #This excludes post-menopausal females.
-                }
-                partner_pool_list = list(partner_pool)
-                pool_sample_size = min(len(partner_pool), 20) #Limit sample size for performance (constant inside the loop)
-                sample_unions = []
-                if needs_union_sample:
-                    coupled_primates = [p for p in coupling_population if p.union is not None]
-                    union_sample_size = min(len(coupled_primates), pool_sample_size * 3) #Larger since there are more people than unions
-                for primate in eligible_for_coupling:
-                        
-                    if not (random.random() < marriage_chance):
-                        continue
+            eligible = (can_couple & (state.union_id < 0) & state.is_fertile &
+                        (age_years * earth_year >= reference.puberty_age_days)) # uncoupled, fertile individuals who are of age
+            if eligible.any():
+                partner_pool = eligible & ~(state.is_female &
+                                            (ops.age_in_days_roundtrip(state.age_days) >= reference.menopause_age_days)) #This excludes post-menopausal females.
+                ops.couple_singles(state, self.table, self.rng, eligible, partner_pool, marriage_chance)
+         
+            plague_count = sum(1 for disaster in active_disasters if disaster.name == "Plague") # ---- 3. Reproduction
+            pollution_count = sum(1 for disaster in active_disasters if disaster.name == "Pollution")
+            reproduction = ops.reproduce(state, self.table, self.names, self.rng, self.current_day, age_years,
+                                         genetic_adjuster, plague_count, pollution_count, self.make_hybrid_row)
+            birth_counter += reproduction.births
+            death_counter += reproduction.infant_deaths
+            eligible_female_counter += reproduction.eligible_mothers
+            piglet_calories += reproduction.piglet_calories #Dead infants are actually piglets that others can eat.
+            newborns = newborns.append(reproduction.newborns)
 
-                    if primate.union is not None:
-                        continue
-                        
-                    if pool_sample_size > 0:
-                            local_pool = random.sample(partner_pool_list, pool_sample_size)
-                            if needs_union_sample:
-                                sampled_people = random.sample(coupled_primates, union_sample_size)
-                                unique_sampled_unions = list({p.union for p in sampled_people})
-                                sample_unions = unique_sampled_unions[:pool_sample_size] #This is all necessary to improve performance and to randomize spouses more.
-                    find_union_for_primate(primate, local_pool, marriage_type, sample_unions)
-
-            current_day = self.current_day
-            for mother, mother_age_years in zip(new_population, new_age_years):
-                # Cheap rejections first; the Union viability check (which loops over members) goes last.
-                # Every term is side-effect free, so reordering cannot change which mothers qualify.
-                if not (mother.is_female and
-                        mother.is_fertile and
-                        mother.next_breeding_day <= current_day and
-                        mother.union is not None):  # Check if in a union
-                    continue
-                mother_params = mother.params
-                if not (mother_params.puberty_age_days <= mother_age_years * earth_year < mother_params.menopause_age_days and
-                        mother.number_of_healthy_children < mother_params.max_kids_per_primate and
-                        mother.union.is_viable_for_breeding()):  # Check if union can breed
-                    continue
-                eligible_female_counter += 1
-
-                contraceptive_use = random.random() < mother_params.contraception_abortion_use_rate
-
-                if mother_params.flat_fertility: #For skipping the fertility calculation.
-                    current_fertility_rate = mother_params.effective_per_cycle_fertility_rate
-                else:
-                    current_fertility_rate = calculate_age_based_fertility(
-                        current_age=mother_age_years,
-                        max_fertility=mother_params.effective_per_cycle_fertility_rate,
-                        rising_steepness=mother_params.fertility_rising_steepness,
-                        rising_midpoint_age=mother_params.fertility_rising_midpoint,
-                        falling_steepness=mother_params.fertility_falling_steepness,
-                        falling_midpoint_age=mother_params.fertility_declining_midpoint
-                    )
-
-                male_fertility = 1.0
-                father = None
-
-                potential_fathers = []
-                if mother.union:
-                    for member in mother.union.members:
-                        if member is mother:
-                            continue
-                        if member.params.is_hermaphrodite or not member.is_female:
-                            potential_fathers.append(member)
-
-                if potential_fathers:
-                    father = random.choice(potential_fathers)
-                    if father.number_of_healthy_children >= father.params.max_kids_per_primate:
-                        continue # Both parents will stop having kids if either hits max
-                    male_age_days = father.age_years * earth_year
-                    if father.params.lifespan_days > 0:
-                        age_ratio = male_age_days / father.params.lifespan_days
-                        male_fertility = 1.0 / (1 + math.exp(10 * (age_ratio - 0.8)))
-                    else:
-                        male_fertility = 0.01
-
-                current_fertility_rate *= male_fertility
-                if contraceptive_use:
-                    current_fertility_rate *= 0.123
-
-                if random.random() <= max(0, current_fertility_rate):
-                    mothers_who_gave_birth.add(mother)
-                    num_births = 1
-                    while random.random() <= mother.params.chance_of_multiple_birth:
-                        num_births += 1
-
-                    if father:
-                        is_hybrid = mother.species_name != father.species_name
-                        birth_aborted = False
-                        child_params = random.choice([mother.params, father.params]) #Default and for random hybrids.
-                        if is_hybrid:
-                            mom_dom = mother.params.is_dominant
-                            dad_dom = father.params.is_dominant                        
-                            if mom_dom and dad_dom:  # Two different dominant species = Non-viable           
-                                birth_aborted = True
-                            elif mom_dom:
-                                child_params = mother.params
-                                is_hybrid = False # Treated as pure for logic
-                            elif dad_dom:
-                                child_params = father.params
-                                is_hybrid = False
-
-                        if birth_aborted: continue
-                        if hybridization_type == "lineal":  # Sons follow father's species, daughters follow mother's species.
-                            sex_ratio_at_birth_chance = random.choice([mother.params.sex_ratio_at_birth, father.params.sex_ratio_at_birth])
-                            if random.random() <= sex_ratio_at_birth_chance:
-                                child_params = mother.params
-                            else:
-                                child_params = father.params
-                        elif hybridization_type == "midpoint" and is_hybrid:  
-                            child_params = SimulationParameters.from_parents(mother.params, father.params)
-                    else:  # Asexual or hermaphrodite reproduction
-                        child_params = mother.params
-                    base_infant_mortality = child_params.infant_mortality_rate
-                    adjusted_infant_mortality = base_infant_mortality * (1.0 + (1.0 - genetic_adjuster)) ** 1.59
-                    adjusted_infant_mortality /= mother.params.genetic_diversity
-                    if is_hybrid and father:
-                       adjusted_infant_mortality /= father.params.genetic_diversity
-                    pollution_sterility = 0.0
-                    for disaster in active_disasters:
-                        if disaster.name == "Plague":
-                            adjusted_infant_mortality += 0.2
-                        if disaster.name == "Pollution":
-                          pollution_sterility += 0.7
-                    for _ in range(num_births):
-                        if random.random() > adjusted_infant_mortality / genetic_adjuster:
-                            hybrid_sterile_chance = child_params.sterile_chance + pollution_sterility
-                            hybrid_sterile_boost = 0.2
-                            if hybridization_type == "lineal" and is_hybrid:
-                                is_female_child = True if mother.params == child_params else False
-                            else: 
-                                is_female_child = True if child_params.is_hermaphrodite else (random.random() < child_params.sex_ratio_at_birth)
-                            if not is_female_child:
-                                hybrid_sterile_boost *= 2 #Males are more likely to be sterile in hybrids
-                            if father:
-                                father.number_of_healthy_children += 1
-                                if is_hybrid:
-                                    hybrid_sterile_chance += hybrid_sterile_boost
-                            is_initially_fertile = random.random() > hybrid_sterile_chance             
-                            if child_params.ages_backward:
-                                if getattr(child_params, "lifespan_days", 0) and child_params.lifespan_days > 0:
-                                    sigma = 0.175 # This allows one in 10,000 to live up to 150, and other Merlins the same probability to  be born at 40. 
-                                    mu = math.log(child_params.lifespan_days) - 0.5 * sigma**2
-                                    randomized_age = int(random.lognormvariate(mu, sigma))
-                                else:
-                                    randomized_age = 0  # NEW: If species uses ages_backward, newborns should start near lifespan (±10%)
-                                age_for_child = randomized_age
-                            else:
-                                age_for_child = 0
-                            child = Primate(
-                                species_name=child_params.species_name,
-                                is_female=is_female_child,
-                                age_days=age_for_child,
-                                is_initially_fertile=is_initially_fertile,
-                                params=child_params
-                            )
-                            newborns.append(child)
-                            mother.number_of_healthy_children += 1
-                            birth_counter += 1
-                        else:
-                            death_counter += 1
-                            if mother.params.respawn_as_male and mother.is_female:
-                                respawned_male = Primate(
-                                    species_name=mother.species_name,
-                                    params=mother.params,
-                                    is_female=False,
-                                    age_days=4748,
-                                    is_initially_fertile=random.random() > mother.params.sterile_chance
-                                )
-                                newborns.append(respawned_male) 
-                            if father: #safety check against asexual reproduction.
-                                if mother.params.kid_fodder or father.params.kid_fodder:
-                                    piglet_calories += 1000 #There dead infants are actually piglets that others can eat.                    
-                    mother.next_breeding_day = self.current_day + mother.params.interbirth_interval_days  # Reset breeding timer         
-
+            # ---- 4. Final death check (maternal and adult mortality)
             adult_mortality_scale = (1.0 + (1.0 - genetic_adjuster)) ** 1.59 # Identical for everyone this cycle, so compute once.
-            plague_count = sum(1 for disaster in active_disasters if disaster.name == "Plague")
-            final_survivors = [] # 5. Final death check (maternal and adult mortality)
-            for primate, primate_age_years in zip(new_population, new_age_years):
-                died = False
-                primate_params = primate.params
-                if primate in mothers_who_gave_birth and random.random() <= primate_params.maternal_mortality_rate:
-                    died = True
-                else: # Use else here to group the adult mortality check            
-                    adult_mortality = primate_params.adult_mortality_rate * cycle_length_in_years
-                    adjusted_adult_mortality = adult_mortality * adult_mortality_scale
-                    for _ in range(plague_count): # Calculate adjusted mortality for this specific primate
-                        adjusted_adult_mortality += 0.2
-                    if primate_age_years > 0.5 and random.random() < adjusted_adult_mortality:
-                        died = True   
-                
-                if died:
-                    death_counter += 1          
-                    try: # Track childless/had_child for adult deaths (ignore pre-pubescent)
-                        is_adult = primate.age_years * earth_year >= primate.params.puberty_age_days
-                    except Exception:
-                        is_adult = False
-                    if is_adult:
-                        if primate.is_female:
-                            if primate.number_of_healthy_children > 0:
-                                female_had_child += 1
-                            else:
-                                female_childless += 1
-                        else:
-                            if primate.number_of_healthy_children > 0:
-                                male_had_child += 1
-                            else:
-                                male_childless += 1
-                    if primate.params.respawn_as_male and primate.is_female:
-                        respawned_male = Primate(
-                            species_name = "Doubles",
-                            params=primate.params, # Assuming self.params is available or use primate.params
-                            is_female=False,
-                            age_days=4748, #Age 13 years
-                            is_initially_fertile=random.random() > primate.params.sterile_chance 
-                        )
-                        newborns.append(respawned_male)                   
-                    if primate.union:
-                        primate.union.remove_member(primate) 
-                else:
-                    final_survivors.append(primate)
-            
-            self.population = final_survivors + newborns # 6. Combine survivors and newborns
-
-            famine_modifier = 1.0
+            died, tally, respawned = ops.final_deaths(state, self.table, self.names, self.rng, age_years,
+                                                      reproduction.gave_birth, adult_mortality_scale, plague_count,
+                                                      cycle_length_in_years)
+            death_counter += int(np.count_nonzero(died))
+            add_tally(tally)
+            last_survivor = self.table.objects[int(state.params_id[-1])] if len(state) else reference # legacy leaked loop variable, see above
+            population = state.take(~died).append(newborns).append(respawned) # 6. Combine survivors and newborns
+       
+            famine_modifier = 1.0  # ---- 5. Feeding: random order, first come first served
             for disaster in active_disasters:
-                        if disaster.name == "Famine":
-                            famine_modifier /= 3.0
+                if disaster.name == "Famine":
+                    famine_modifier /= 3.0 # This reduces available calories to 1/3 of normal, which is a severe famine.
             avail_meat = self.locale.carnivore_calories * self.cycle_days * famine_modifier + piglet_calories
             avail_veg = self.locale.herbivore_calories * self.cycle_days * famine_modifier
             avail_grass = self.locale.ruminant_calories * self.cycle_days * famine_modifier
             avail_water = self.locale.water_availability_m3 * self.cycle_days 
-            final_population = []
-            coupled_survivors = [] # survivors still in a union; filled during the feeding loop, used by the union cleanup at the end of the cycle
-            
-            current_living = self.population # a fresh list (survivors + newborns) that nothing else references, so it can be shuffled in place
-            random.shuffle(current_living) 
-            
-            for p in current_living:
-                step_need = p.get_caloric_need() * cycle_days
-                diet = p.params.diet_key
-                fed = False       
-                if diet == "autotroph":
-                    if avail_water >= step_need:
-                        avail_water -= step_need; fed = True
-                elif diet == "carnivore":
-                    if avail_meat >= step_need:
-                        avail_meat -= step_need; fed = True
-                elif diet == "herbivore":
-                    if avail_veg >= step_need:
-                        avail_veg -= step_need; fed = True
-                elif diet == "ruminant":
-                    if avail_grass >= step_need:
-                        avail_grass -= step_need; fed = True
-                elif diet == "omnivore":
-                    if avail_veg >= step_need:
-                        avail_veg -= step_need; fed = True
-                    elif avail_meat >= step_need:
-                        avail_meat -= step_need; fed = True
-                elif diet == "everything":
-                    if avail_grass >= step_need:
-                        avail_grass -= step_need; fed = True
-                    if avail_veg >= step_need:
-                        avail_veg -= step_need; fed = True
-                    elif avail_meat >= step_need:
-                        avail_meat -= step_need; fed = True    
-                if p.params.is_aquatic:
-                    avail_water -= self.cycle_days
-                    fed = avail_water >= 0 #merfolk need food & water.
-                if fed:
-                    final_population.append(p)
-                    if p.union is not None: # a survivor's own union cannot change for the rest of the loop (only a dying member's can)
-                        coupled_survivors.append(p)
-                else:
-                    death_counter += 1                 
-                    try: # Track childless/had_child for starvation deaths (ignore pre-pubescent)
-                        is_adult = p.age_years * earth_year >= p.params.puberty_age_days
-                    except Exception:
-                        is_adult = False
-                    if is_adult:
-                        if p.is_female:
-                            if p.number_of_healthy_children > 0:
-                                female_had_child += 1
-                            else:
-                                female_childless += 1
-                        else:
-                            if p.number_of_healthy_children > 0:
-                                male_had_child += 1
-                            else:
-                                male_childless += 1
-                    if p.union: p.union.remove_member(p)
+            shuffled, fed = ops.feed(population, self.table, self.rng, cycle_days, avail_meat, avail_veg, avail_grass, avail_water)
+            starved = ~fed
+            death_counter += int(np.count_nonzero(starved))
+            add_tally(ops.count_adult_deaths(shuffled, starved, self.table))
 
             total_births += birth_counter
             total_deaths += death_counter
             
-            self.population = final_population
+            self.state = shuffled.take(fed)
 
             if self.current_day >= total_days or cycle % cycle_interval == 0: # Always log last cycle
-                log_population_stats(self.current_day, self.population, self.history, cycle, birth_counter, death_counter, eligible_female_counter)
+                log_population_stats(self.current_day, self.state, self.history, cycle, birth_counter, death_counter, eligible_female_counter)
                 cycle_days_passed = 0          
-            if not primate.params.is_hermaphrodite and not primate.params.is_sequential_species:  # 9. Check for extinction
-                if not any(p.is_female for p in self.population) or not any(not p.is_female for p in self.population):
+            if not last_survivor.is_hermaphrodite and not last_survivor.is_sequential_species:  # 9. Check for extinction
+                if not self.state.is_female.any() or self.state.is_female.all():
                     print(f"\n--- Simulation Terminated Early on cycle {cycle} ---")
                     print("Reason: One gender has gone extinct.")
                     break
             
-            if not self.population:
+            if len(self.state) == 0:
                 print(f"\n--- Simulation Terminated Early on cycle {cycle} ---")
                 print("Reason: Population is extinct.")
                 break
 
-            verified_unions = set() # A union that is not dissolved can't change inside this loop (only dissolved ones are modified), so check each one once.
-            for primate in coupled_survivors:
-                union = primate.union
-                if union in verified_unions:
-                    continue
-                if union.is_dissolved():
-                    union.remove_member(primate)
-                else:
-                    verified_unions.add(union)
+            ops.clean_unions(self.state, self.table) # a union that lost a partner (or never had both sexes) is dissolved
             cycle += 1
 
         print("\n--- Simulation Finished ---")
@@ -664,7 +314,7 @@ class PrimateSimulation:
         population_over_time = [h['population'] for h in self.history if h['cycle'] != 0]
         average_population = sum(population_over_time) / len(population_over_time) if population_over_time else initial_pop_size
         total_duration_years = max(1, total_duration)
-        final_population = len(self.population)
+        final_population = len(self.state)
         
         calculated_birth_rate = (total_births / average_population / total_duration_years) * 1000 if average_population > 0 and total_duration_years > 0 else 0
         calculated_death_rate = (total_deaths / average_population / total_duration_years) * 1000 if average_population > 0 and total_duration_years > 0 else 0       
@@ -678,20 +328,19 @@ class PrimateSimulation:
         else:
             print("Percent that died of old age: N/A (0 deaths)")
         
-        final_unions_set = {p.union for p in self.population if p.union}
-        final_unions_list = list(final_unions_set)
-        print(f"Breeding Union Count: {len(final_unions_set)}")
+        final_unions = np.unique(self.state.union_id[self.state.union_id >= 0])
+        print(f"Breeding Union Count: {len(final_unions)}")
         print("Total Cycle Count:", cycle - 1)
         print(f"Crude Birth Rate (per 1,000/year, based on avg pop): {calculated_birth_rate:.2f}")
         print(f"Crude Death Rate (per 1,000/year, based on avg pop): {calculated_death_rate:.2f}")
         print(f"Rate of Natural Increase: {calculated_birth_rate - calculated_death_rate:.2f} per 1,000/year")
-        print(f"Population Change: {(len(self.population) / initial_pop_size * 100):.2f}%" if initial_pop_size > 0 else "N/A")
+        print(f"Population Change: {(len(self.state) / initial_pop_size * 100):.2f}%" if initial_pop_size > 0 else "N/A")
         
-        sample_size = min(len(final_unions_set), 40)      
+        sample_size = min(len(final_unions), 40)      
         print(f"Unions of Random Sample ({sample_size} coupled individuals):")
         if sample_size > 0:
-            sampled_unions = random.sample(final_unions_list, sample_size) #Sampling a set is deprecated
-            print(sampled_unions) #Only unique unions printed due to set usage
+            sampled_unions = [self._describe_union(int(label)) for label in self.rng.choice(final_unions, sample_size, replace=False)]
+            print(sampled_unions) #Only unique unions printed
         else:
             print("[] (No coupled individuals found)")
     
@@ -712,33 +361,29 @@ class PrimateSimulation:
         else:
             print(f"Female childless ratio: {female_childless_ratio:.2%} ({female_childless} childless / {female_had_child + female_childless} adult female deaths)")
    
-        if self.population:  # Print oldest male and female primates
-            males = [p for p in self.population if not p.is_female]
-            females = [p for p in self.population if p.is_female]
-            if males:
-                oldest_male = max(males, key=lambda p: p.age_days)
-                print(f"Oldest Male Age: {oldest_male.age_years:.2f} years, Kids: {oldest_male.number_of_healthy_children}")
-            else:
-                print("Oldest Male: None")
-
-            if females:
-                oldest_female = max(females, key=lambda p: p.age_days)
-                print(f"Oldest Female:  {oldest_female.age_years:.2f} years, Kids: {oldest_female.number_of_healthy_children}")
-            else:
-                print("Oldest Female: None")
+        if len(self.state):  # Print oldest male and female primates
+            for label, mask in (("Male", ~self.state.is_female), ("Female", self.state.is_female)):
+                if mask.any():
+                    ages = np.where(mask, self.state.age_days, -np.inf)
+                    oldest = int(np.argmax(ages))
+                    print(f"Oldest {label} Age: {self.state.age_days[oldest] / earth_year:.2f} years, Kids: {int(self.state.children[oldest])}"
+                          if label == "Male" else
+                          f"Oldest {label}:  {self.state.age_days[oldest] / earth_year:.2f} years, Kids: {int(self.state.children[oldest])}")
+                else:
+                    print(f"Oldest {label}: None")
                
         end_time = time.time()
         runtime = end_time - start_time
         print(f"\nSimulation Runtime: {runtime:.2f} seconds") # Add runtime calculation and display at the end
-        display_population_pyramid(self.population, earth_year)
+        display_population_pyramid(self.state, earth_year)
         plot_population_history(self.history, self.current_day)
 
 if __name__ == "__main__":
     with open("demographics.json", "r") as f:
         demographics_data = json.load(f)
     #starting_species = list(demographics_data.keys()) #This is for simulations, otherwise manually enter the starting species.
-    starting_species = [ "royal_human"]
+    starting_species = [ "goblin"]
     sim_locale = Locale.from_json("locales.json", "south_african_savanna")   
     simulation = PrimateSimulation(starting_species, sim_locale)  # Load multiple species   
-    simulation.run_simulation(num_years=80.0) # Run the specific scenario
+    simulation.run_simulation(num_years=100.0) # Run the specific scenario
 

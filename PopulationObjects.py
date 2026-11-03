@@ -7,10 +7,6 @@ earth_year = 365.2422  # Constants
 HUMAN_STD_LIFESPAN = 81.4  # years; baseline the Gompertz old-age mortality curve is scaled against
 
 class Primate:
-    # __slots__ drops the per-instance __dict__: smaller objects, faster attribute access, less memory
-    # churn with tens of thousands of agents. These are exactly the attributes the repo reads/writes;
-    # nothing adds attributes dynamically (checked: no setattr/__dict__/vars/copy/pickle anywhere).
-    # If you add a new per-individual attribute, add it here too.
     __slots__ = ("species_name", "is_female", "params", "age_days", "is_fertile",
                  "number_of_healthy_children", "next_breeding_day", "union")
 
@@ -37,10 +33,9 @@ class Primate:
 
         if self.is_female:
             need *= 0.9
-
-        # Same float round-trip as age_years * earth_year, without the property call.
+      
         biological_age_days = (self.age_days / earth_year) * earth_year
-        if biological_age_days < params.puberty_age_days:
+        if biological_age_days < params.puberty_age_days:  # Same float round-trip as age_years * earth_year, without the property call.
             need *= 0.5
         if biological_age_days > params.lifespan_days:
             need *= 0.75
@@ -53,7 +48,6 @@ class Primate:
         """
         return self.union is not None
     
-
     def __repr__(self) -> str:
         species = self.species_name
         gender = "Female" if self.is_female else "Male"
@@ -133,7 +127,7 @@ class SimulationParameters:
         
         self.is_hermaphrodite = params.get("is_hermaphrodite", False) # Use .get() for optional params
         self.is_sequential_species = params.get("is_sequential_species", False)
-        self.ages_backward = params.get("ages_backward", False) # --- ADDED ---
+        self.ages_backward = params.get("ages_backward", False) 
         self.is_dominant = params.get("is_dominant", False) #Is dominant means that this species can only propagate itself.
         self.seasonal_mater = params.get("seasonal_mater", False) #This means that the species has mating cycles.
         self.lopsided_sex_lifespan = params.get("lopsided_sex_lifespan", False)
@@ -178,19 +172,15 @@ class SimulationParameters:
 
     def _cache_derived(self):
         """Precompute values that are pure functions of this object's (never-mutated) fields."""
-        # Gompertz old-age mortality (runs for every individual every cycle).
-        self.lifespan_years = self.lifespan_days / earth_year if self.lifespan_days > 0 else 0.0
+        self.lifespan_years = self.lifespan_days / earth_year if self.lifespan_days > 0 else 0.0         # Gompertz old-age mortality (runs for every individual every cycle).
         self.human_aging_factor = HUMAN_STD_LIFESPAN / self.lifespan_years if self.lifespan_years > 0 else 0.0
-
-        # Age-based fertility curve (runs for every eligible mother every cycle).
+       
         self.flat_fertility = (self.fertility_rising_steepness < 0.01 and self.fertility_falling_steepness < 0.01)
-        fertile_years = self.fertile_days / earth_year
+        fertile_years = self.fertile_days / earth_year  # Age-based fertility curve (runs for every eligible mother every cycle).
         peak_age = self.puberty_age_days / earth_year + fertile_years * 0.127
         self.fertility_rising_midpoint = (self.puberty_age_days / earth_year + peak_age) / 1.6
-        self.fertility_declining_midpoint = (peak_age + self.menopause_age_days / earth_year) / 1.95
-
-        # Feeding loop compares this string for every individual every cycle.
-        self.diet_key = self.diet_type.lower()
+        self.fertility_declining_midpoint = (peak_age + self.menopause_age_days / earth_year) / 1.95     
+        self.diet_key = self.diet_type.lower() # Feeding loop compares this string for every individual every cycle.
 
     @classmethod
     def from_parents(cls, p1: 'SimulationParameters', p2: 'SimulationParameters'):
@@ -258,7 +248,7 @@ class Union:
         self.marriage_type = marriage_type
         self.max_size = max_size
         self.members: List[Primate] = []
-        self.dissolved = False   # <-- CRUCIAL FIX
+        self.dissolved = False  
 
     def add_member(self, primate: Primate):
         if len(self.members) < self.max_size:
@@ -306,9 +296,8 @@ class Union:
         if len(self.members) < 2:
             return False            
         return self.has_females() and self.has_males()
-
-    # In Union class
-    def __repr__(self):
+    
+    def __repr__(self): # In Union class
         member_descriptions = ", ".join(
         [f"{'♀️ ' if m.is_female else '♂️ '}{m.species_name}( Age: {m.age_years:.0f} Kids: {m.number_of_healthy_children})" for m in self.members]
         )
@@ -366,15 +355,11 @@ def calculate_age_based_fertility(
     :param falling_midpoint_age: The age (in years) at which fertility falls to 50% of its peak during the decline (t2).
     :return: The calculated fertility rate for the current age.
     """
-    # Logistic function for the rising part of the curve (puberty to peak)
-    growth_logistic = _inverse_logistic(-rising_steepness * (current_age - rising_midpoint_age))
+  
+    growth_logistic = _inverse_logistic(-rising_steepness * (current_age - rising_midpoint_age))   # Logistic function for the rising part of the curve (puberty to peak)
+    decline_logistic = 1.0 - _inverse_logistic(-falling_steepness * (current_age - falling_midpoint_age)) # Logistic function for the declining part of the curve (peak to menopause)
     
-    # Logistic function for the declining part of the curve (peak to menopause)
-    # This is (1 - logistic) to create an inverse curve
-    decline_logistic = 1.0 - _inverse_logistic(-falling_steepness * (current_age - falling_midpoint_age))
-    
-    # The final fertility is the product of the peak rate and both logistic curves
-    return max_fertility * growth_logistic * decline_logistic
+    return max_fertility * growth_logistic * decline_logistic # The final fertility is the product of the peak rate and both logistic curves
 
 def find_union_for_primate(primate: Primate, eligible_pool: Set[Primate], marriage_type, active_unions: List[Union]):
         """
@@ -401,7 +386,6 @@ def find_union_for_primate(primate: Primate, eligible_pool: Set[Primate], marria
             return # No partners available
         
         primate_age_days = primate.age_days
-        # min() returns the first item with the smallest key, exactly what sort(...)[0] returned (stable sort).
         best_partner = min(potential_partners, key=lambda p: abs(p.age_days - primate_age_days)) # Closest age
 
         if marriage_type == "monogamy":
@@ -412,7 +396,6 @@ def find_union_for_primate(primate: Primate, eligible_pool: Set[Primate], marria
 
         if marriage_type == "polygyny":
             if not primate.is_female: # Male is seeking
-                # Males form new unions
                 new_union = Union(marriage_type="polygyny", max_size=5)
                 new_union.add_member(primate)
                 new_union.add_member(best_partner) # Add one female
