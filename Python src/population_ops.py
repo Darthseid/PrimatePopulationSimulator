@@ -200,8 +200,27 @@ def _distinct_samples(rng, rows, population, k):
 MARRIAGE_MAX_SIZE = {"monogamy": 2, "polygyny": 5, "polyandry": 5, "polygamy": 9}
 
 
+def _species_compatible(state, table, left, right):
+    """Same species, or both humanoid. `left` and `right` are broadcastable index arrays."""
+    return ((state.species_id[left] == state.species_id[right]) |
+            (table.is_humanoid[state.params_id[left]] & table.is_humanoid[state.params_id[right]]))
+
+
+def _take_slot(bucket, taken):
+    while bucket:
+        slot = bucket.pop()
+        if not taken[slot]:
+            taken[slot] = True
+            return slot
+    return None
+
+
 def _join_existing_unions(state, table, rng, eligible, marriage_type, max_size):
-    """Leftover singles join existing unions that still have room (polygyny / polyandry / polygamy)."""
+    """Leftover singles join existing unions that still have room (polygyny / polyandry / polygamy).
+
+    A non-humanoid only joins a union of its own species. Humanoids may join other humanoids.
+    A xenophile who passes a coin flip prefers a union that already holds another species.
+    """
     singles = eligible & (state.union_id < 0)
     herm = table.is_hermaphrodite[state.params_id]
     if marriage_type == "polygyny":
@@ -223,11 +242,73 @@ def _join_existing_unions(state, table, rng, eligible, marriage_type, max_size):
     open_idx = np.flatnonzero(open_union)
     if len(open_idx) == 0:
         return 0
-    slots = np.repeat(stats.labels[open_idx], space[open_idx])
-    n_assign = min(len(joiners), len(slots))
-    chosen = joiners[rng.permutation(len(joiners))[:n_assign]]
-    state.union_id[chosen] = slots[:n_assign]
-    return n_assign
+
+    coupled = stats.coupled
+    inv = stats.inverse
+    member_species = state.species_id[coupled]
+    count = len(stats.labels)
+    sp_min = np.full(count, np.iinfo(np.int32).max, dtype=np.int32)
+    sp_max = np.full(count, np.int32(-1), dtype=np.int32)
+    np.minimum.at(sp_min, inv, member_species)
+    np.maximum.at(sp_max, inv, member_species)
+    uniform = np.where(sp_min == sp_max, sp_min, np.int32(-1))
+    all_humanoid = np.bincount(inv, weights=(~table.is_humanoid[state.params_id[coupled]]).astype(np.int32),
+                               minlength=count) == 0
+
+    slot_label = np.repeat(stats.labels[open_idx], space[open_idx])
+    slot_species = np.repeat(uniform[open_idx], space[open_idx])
+    slot_humanoid = np.repeat(all_humanoid[open_idx], space[open_idx])
+    if len(slot_label) == 0:
+        return 0
+    own_bucket = {}
+    cross_bucket = {}
+    mixed_bucket = []
+    for slot in rng.permutation(len(slot_label)).tolist():
+        species = int(slot_species[slot])
+        if species >= 0:
+            own_bucket.setdefault(species, []).append(slot)
+        if slot_humanoid[slot] and species >= 0:
+            cross_bucket.setdefault(species, []).append(slot)
+        elif slot_humanoid[slot]:
+            mixed_bucket.append(slot)
+
+    taken = np.zeros(len(slot_label), dtype=bool)
+    cross_species = list(cross_bucket.keys())
+    wants_other = table.is_xenophilic[state.params_id[joiners]] & table.is_humanoid[state.params_id[joiners]]
+    if wants_other.any():
+        wants_other = wants_other & (rng.random(len(joiners)) < 0.5)
+    assigned = 0
+    for j in rng.permutation(len(joiners)).tolist():
+        person = int(joiners[j])
+        sid = int(state.species_id[person])
+        human = bool(table.is_humanoid[state.params_id[person]])
+        slot = None
+        if wants_other[j]:
+            slot = _take_slot(mixed_bucket, taken)
+            if slot is None and cross_species:
+                start = int(rng.integers(0, len(cross_species)))
+                for step in range(len(cross_species)):
+                    species = cross_species[(start + step) % len(cross_species)]
+                    if species == sid:
+                        continue
+                    slot = _take_slot(cross_bucket[species], taken)
+                    if slot is not None:
+                        break
+        if slot is None:
+            slot = _take_slot(own_bucket.get(sid, []), taken)
+        if slot is None and human:
+            slot = _take_slot(mixed_bucket, taken)
+            if slot is None:
+                for species, bucket in cross_bucket.items():
+                    if species == sid:
+                        continue
+                    slot = _take_slot(bucket, taken)
+                    if slot is not None:
+                        break
+        if slot is not None:
+            state.union_id[person] = slot_label[slot]
+            assigned += 1
+    return assigned
 
 
 def couple_singles(state, table, rng, eligible, partner_pool, marriage_chance, sample_cap=20,
@@ -242,9 +323,13 @@ def couple_singles(state, table, rng, eligible, partner_pool, marriage_chance, s
     difference are computed for all attempters at once; only the final in-order claim resolution is a Python loop, and
     it runs once per attempter, not once per individual.
 
+    A pairing has to be the same species, or both humanoid. Non-humanoids never couple outside their species.
+    A xenophile who passes a coin flip samples partners of another species first, and falls back to the usual
+    closest-age partner when no other species is available.
+
     Non-monogamous marriage types then let leftover singles join existing unions that still have room: polygyny is
     1 male + many females (max 5), polyandry is 1 female + many males (max 5), polygamy is many + many (max 9).
-    Warfare can still enlarge a union past these caps.
+    Warfare can still enlarge a union past these caps, including across a species line a non-humanoid would not choose.
     Returns the number of people newly placed into a union (two per new pair, plus joiners).
     """
     joined = 0
@@ -265,11 +350,42 @@ def couple_singles(state, table, rng, eligible, partner_pool, marriage_chance, s
             herm = table.is_hermaphrodite[state.params_id]
             female = state.is_female
             compatible = ((herm[attempters][:, None] & herm[candidates]) | (female[attempters][:, None] != female[candidates]))
-            usable = (candidates != attempters[:, None]) & compatible
+            species_ok = _species_compatible(state, table, attempters[:, None], candidates)
+            usable = (candidates != attempters[:, None]) & compatible & species_ok
             age_gap = np.where(usable, np.abs(state.age_days[candidates] - state.age_days[attempters][:, None]), np.inf)
             ranked = np.argsort(age_gap, axis=1, kind="stable")        # closest first; ties keep sample order (first minimum)
             ranked_candidates = np.take_along_axis(candidates, ranked, axis=1).tolist()
             ranked_usable = np.isfinite(np.take_along_axis(age_gap, ranked, axis=1)).tolist()
+
+            xen = table.is_xenophilic[state.params_id[attempters]] & table.is_humanoid[state.params_id[attempters]]
+            if xen.any() and (wants_other := xen & (rng.random(len(attempters)) < 0.5)).any():
+                pool_species = state.species_id[pool_idx]
+                order = np.argsort(pool_species, kind="stable")
+                sorted_pool = pool_idx[order]
+                uniq, starts, counts = np.unique(pool_species[order], return_index=True, return_counts=True)
+                start_of = {int(s): int(a) for s, a in zip(uniq, starts)}
+                count_of = {int(s): int(c) for s, c in zip(uniq, counts)}
+                n_pool = len(pool_idx)
+                for row in np.flatnonzero(wants_other).tolist():
+                    person = int(attempters[row])
+                    sid = int(state.species_id[person])
+                    own_n = count_of.get(sid, 0)
+                    other_n = n_pool - own_n
+                    if other_n <= 0:
+                        continue
+                    take = min(sample_cap, other_n)
+                    picks = _distinct_samples(rng, 1, other_n, take)[0]
+                    mapped = picks + own_n * (picks >= start_of.get(sid, 0))
+                    alt = sorted_pool[mapped]
+                    sex_ok = ((herm[person] & herm[alt]) | (female[person] != female[alt])) & (alt != person)
+                    sex_ok = sex_ok & table.is_humanoid[state.params_id[alt]]
+                    if not sex_ok.any():
+                        continue
+                    gaps = np.where(sex_ok, np.abs(state.age_days[alt] - state.age_days[person]), np.inf)
+                    keep = np.argsort(gaps, kind="stable")
+                    keep = keep[np.isfinite(gaps[keep])]
+                    ranked_candidates[row] = alt[keep].tolist()
+                    ranked_usable[row] = [True] * len(keep)
 
             taken = set()
             first, second = [], []
@@ -314,18 +430,31 @@ class ReproductionResult:
         self.piglet_calories = piglet_calories
 
 def _find_fathers(state, table, rng, mothers, stats, partner):
-    """father[j] = index of the father of mothers[j], or -1 when the mother has no male-role partner (asexual rule)."""
+    """father[j] = index of the father of mothers[j], or -1 when the mother has no male-role partner (asexual rule).
+
+    Also returns cross_blocked: a partner of another species exists, but a non-humanoid makes the cross illegal,
+    and no compatible male in the union can father the child. Those mothers must not fall through to asexual birth.
+    """
     herm = table.is_hermaphrodite[state.params_id]
     male_like = ~state.is_female | herm
     other = partner[mothers]
     has_pair_partner = other >= 0
-    father = np.where(has_pair_partner & male_like[np.where(has_pair_partner, other, 0)], other, -1)
-    big = stats.per_individual(stats.size, len(state), default=0)[mothers] > 2     # harems 
+    safe_other = np.where(has_pair_partner, other, 0)
+    pair_ok = has_pair_partner & _species_compatible(state, table, mothers, safe_other)
+    father = np.where(pair_ok & male_like[safe_other], other, -1)
+    cross_blocked = has_pair_partner & ~pair_ok
+    big = stats.per_individual(stats.size, len(state), default=0)[mothers] > 2     # harems
     for j in np.flatnonzero(big):
         members = np.flatnonzero(state.union_id == state.union_id[mothers[j]])
-        options = [m for m in members if m != mothers[j] and male_like[m]]
-        father[j] = options[int(rng.integers(len(options)))] if options else -1
-    return father
+        options = [m for m in members if m != mothers[j] and male_like[m]
+                   and _species_compatible(state, table, mothers[j], m)]
+        if options:
+            father[j] = options[int(rng.integers(len(options)))]
+            cross_blocked[j] = False
+        else:
+            father[j] = -1
+            cross_blocked[j] = True
+    return father, cross_blocked
 
 def reproduce(state, table, names, rng, current_day, age_years, genetic_adjuster, plague_count, pollution_count,
               make_hybrid_row, hybridization_type="codominant"):
@@ -336,10 +465,11 @@ def reproduce(state, table, names, rng, current_day, age_years, genetic_adjuster
     draw, number of births (multiple births), then for each child: whether it survives infancy, its sex, whether it is
     fertile and, for backwards-ageing species, its starting age.
 
-    Hybridization (see README): dominant species always produce full members of that species. Otherwise
-    `codominant` (default) yields full males and females of either parent species, `midpoint` blends parameters
-    (`make_hybrid_row` / SimulationParameters.from_parents), and `lineal` gives daughters the mother's species and
-    sons the father's.
+    Hybridization (see README): only two humanoids of different species can hybridize. A non-humanoid breeds only
+    with its own species; a cross that warfare or a glitch created produces no children. Dominant species always
+    produce full members of that species. Otherwise `codominant` (default) yields full males and females of either
+    parent species, `midpoint` blends parameters (`make_hybrid_row` / SimulationParameters.from_parents), and
+    `lineal` gives daughters the mother's species and sons the father's.
 
     Differences from the object-based loop (all only matter for polygynous harems, which only warfare creates, or
     for hermaphrodite pairs): a father's "max children" check uses his count from the start of the phase rather than a
@@ -369,7 +499,7 @@ def reproduce(state, table, names, rng, current_day, age_years, genetic_adjuster
         table.fertility_falling_steepness[mp], table.fertility_declining_midpoint[mp]))
 
     partner = stats.partners_of_pairs(n)
-    father = _find_fathers(state, table, rng, mothers, stats, partner)
+    father, cross_blocked = _find_fathers(state, table, rng, mothers, stats, partner)
     has_father = father >= 0
     fi = np.where(has_father, father, 0)
     fp = p[fi]
@@ -380,7 +510,7 @@ def reproduce(state, table, names, rng, current_day, age_years, genetic_adjuster
         male_fertility = np.where(lifespan > 0, 1.0 / (1 + np.exp(10 * (father_age_days / np.where(lifespan > 0, lifespan, 1) - 0.8))), 0.01)
     fertility = fertility * np.where(has_father, male_fertility, 1.0)
     fertility = np.where(contraceptive, fertility * 0.123, fertility)
-    conceives = (rng.random(M) <= np.maximum(0, fertility)) & ~father_maxed
+    conceives = (rng.random(M) <= np.maximum(0, fertility)) & ~father_maxed & ~cross_blocked
     c = np.flatnonzero(conceives)                         # positions within `mothers`
     gave_birth = np.zeros(n, dtype=bool)
     gave_birth[mothers[c]] = True

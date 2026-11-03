@@ -67,7 +67,8 @@ class ParameterTable:
     )
     BOOL_FIELDS = (
         "is_hermaphrodite", "is_sequential_species", "ages_backward", "is_dominant", "lopsided_sex_lifespan",
-        "has_sequent_sex_transition", "respawn_as_male", "is_aquatic", "kid_fodder", "flat_fertility",
+        "has_sequent_sex_transition", "respawn_as_male", "is_aquatic", "kid_fodder",
+        "is_humanoid", "is_xenophilic", "flat_fertility",
     )
     # Derived columns that are not plain attributes of SimulationParameters.
     EXTRA_BOOL = ("seasonal_not_false", "seasonal_truthy")   # see _row_values

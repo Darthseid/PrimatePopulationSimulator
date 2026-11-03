@@ -14,7 +14,7 @@ from graphing import log_population_stats, display_population_pyramid, plot_popu
 from typing import List
 
 earth_year = 365.2422
-starting_population = 99
+starting_population = 100
 
 class PrimateSimulation:
     """
@@ -120,7 +120,8 @@ class PrimateSimulation:
         print(f"Initial population created: {len(self.state)} individuals (random species).")
 
     BLEND_RANDOM_FIELDS = ("diet_type", "is_dominant", "seasonal_mater", "ages_backward", "lopsided_sex_lifespan",
-                           "has_sequent_sex_transition", "respawn_as_male", "is_aquatic", "kid_fodder")   # This is for hybrids.
+                           "has_sequent_sex_transition", "respawn_as_male", "is_aquatic", "kid_fodder",
+                           "is_humanoid", "is_xenophilic")   # This is for hybrids.
 
     def make_hybrid_row(self, mother_row, father_row):
         """Parameter-table row for a midpoint hybrid of two parent rows (SimulationParameters.from_parents)."""
@@ -386,19 +387,18 @@ class PrimateSimulation:
         display_population_pyramid(self.state, earth_year)
         plot_population_history(self.history, self.current_day)
 
-if __name__ == "__main__":
-    # --- Settings menu: change these to configure a run ---
-    hybridization_type = "midpoint"  # "codominant" (default), "midpoint", or "lineal"
-    marriage_type = "polygyny"         # "monogamy" (default), "polygyny", "polyandry", or "polygamy"
+if __name__ == "__main__":  # --- Settings menu: change these to configure a run ---   
+    hybridization_type = "codominant"  # "codominant" (default), "midpoint", or "lineal"
+    marriage_type = "monogamy"         # "monogamy" (default), "polygyny", "polyandry", or "polygamy"
     disasters_enabled = True        # True to allow Warfare, Plague, Pollution, and Famine
     num_years = 99.0
-    scenario_name = "survival_of_the_fittest"  # None for a random starting population
+    scenario_name = None  # None for a random starting population
     locale_name = "pampas"
 
     with open("demographics.json", "r") as f:
         demographics_data = json.load(f)
-    starting_species = list(demographics_data.keys()) #This is for simulations, otherwise manually enter the starting species.
-   # starting_species = [ "elf", "medieval_human"]
+    #starting_species = list(demographics_data.keys()) #This is for simulations, otherwise manually enter the starting species.
+    starting_species = [ "satyr", "modern_human"]
     sim_locale = Locale.from_json("locales.json", locale_name)
     simulation = PrimateSimulation(
         starting_species, sim_locale, scenario_name,

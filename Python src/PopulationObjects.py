@@ -135,6 +135,8 @@ class SimulationParameters:
         self.respawn_as_male = params.get("respawn_as_male", False)
         self.is_aquatic = params.get("is_aquatic", False)
         self.kid_fodder = params.get("kid_fodder", False)
+        self.is_humanoid = params.get("is_humanoid", True)  # Non-humanoids breed only with their own species.
+        self.is_xenophilic = params.get("is_xenophilic", False)  # Prefer a partner of another species on a coin flip.
         
         self.infant_mortality_rate = params["infant_mortality_rate"]
         self.maternal_mortality_rate = params["maternal_mortality_rate"]
@@ -208,6 +210,8 @@ class SimulationParameters:
         new_params.is_aquatic = random.choice([p1.is_aquatic, p2.is_aquatic])
         new_params.is_aquatic = random.choice([p1.is_aquatic, p2.is_aquatic])
         new_params.kid_fodder = random.choice([p1.kid_fodder, p2.kid_fodder])
+        new_params.is_humanoid = random.choice([p1.is_humanoid, p2.is_humanoid])
+        new_params.is_xenophilic = random.choice([p1.is_xenophilic, p2.is_xenophilic])
               
         new_params.puberty_age_days = (p1.puberty_age_days + p2.puberty_age_days) / 2
         new_params.menopause_age_days = (p1.menopause_age_days + p2.menopause_age_days) / 2
@@ -365,6 +369,8 @@ def find_union_for_primate(primate: Primate, eligible_pool: Set[Primate], marria
         """
         This is the new "Coupling" function.
         It finds a partner or existing union for the given primate.
+        
+        For xenophilic species, there's a 50% chance to prioritize partners from other species.
         """
         if marriage_type == "asexual":
             if primate.is_hermaphrodite:
@@ -384,6 +390,13 @@ def find_union_for_primate(primate: Primate, eligible_pool: Set[Primate], marria
 
         if not potential_partners:
             return # No partners available
+        
+        # Apply xenophilic preference if applicable
+        if primate.params.is_xenophilic and random.random() < 0.5:
+            # Filter for partners of different species
+            other_species_partners = [p for p in potential_partners if p.species_name != primate.species_name]
+            if other_species_partners:
+                potential_partners = other_species_partners
         
         primate_age_days = primate.age_days
         best_partner = min(potential_partners, key=lambda p: abs(p.age_days - primate_age_days)) # Closest age
