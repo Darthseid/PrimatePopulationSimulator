@@ -197,7 +197,41 @@ def _distinct_samples(rng, rows, population, k):
         samples[repeated] = rng.integers(0, population, size=(repeated.size, k))
 
 
-def couple_singles(state, table, rng, eligible, partner_pool, marriage_chance, sample_cap=20):
+MARRIAGE_MAX_SIZE = {"monogamy": 2, "polygyny": 5, "polyandry": 5, "polygamy": 9}
+
+
+def _join_existing_unions(state, table, rng, eligible, marriage_type, max_size):
+    """Leftover singles join existing unions that still have room (polygyny / polyandry / polygamy)."""
+    singles = eligible & (state.union_id < 0)
+    herm = table.is_hermaphrodite[state.params_id]
+    if marriage_type == "polygyny":
+        singles = singles & (state.is_female | herm)
+    elif marriage_type == "polyandry":
+        singles = singles & (~state.is_female | herm)
+    joiners = np.flatnonzero(singles)
+    if len(joiners) == 0:
+        return 0
+    stats = UnionStats(state, table)
+    if len(stats.labels) == 0:
+        return 0
+    space = np.maximum(0, max_size - stats.size)
+    open_union = space > 0
+    if marriage_type == "polygyny":
+        open_union = open_union & stats.has_males
+    elif marriage_type == "polyandry":
+        open_union = open_union & stats.has_females
+    open_idx = np.flatnonzero(open_union)
+    if len(open_idx) == 0:
+        return 0
+    slots = np.repeat(stats.labels[open_idx], space[open_idx])
+    n_assign = min(len(joiners), len(slots))
+    chosen = joiners[rng.permutation(len(joiners))[:n_assign]]
+    state.union_id[chosen] = slots[:n_assign]
+    return n_assign
+
+
+def couple_singles(state, table, rng, eligible, partner_pool, marriage_chance, sample_cap=20,
+                   marriage_type="monogamy"):
     """
     Coupling phase. Each eligible single individual tries to pair with probability `marriage_chance`; an attempt
     looks at a random sample of up to `sample_cap` members of the partner pool and takes the one closest in age that is
@@ -207,46 +241,59 @@ def couple_singles(state, table, rng, eligible, partner_pool, marriage_chance, s
     an earlier attempt is no longer available to a later one. Samples and each attempter's candidates ranked by age
     difference are computed for all attempters at once; only the final in-order claim resolution is a Python loop, and
     it runs once per attempter, not once per individual.
-    Returns the number of new unions.
+
+    Non-monogamous marriage types then let leftover singles join existing unions that still have room: polygyny is
+    1 male + many females (max 5), polyandry is 1 female + many males (max 5), polygamy is many + many (max 9).
+    Warfare can still enlarge a union past these caps.
+    Returns the number of people newly placed into a union (two per new pair, plus joiners).
     """
-    eligible_idx = np.flatnonzero(eligible)
-    pool_idx = np.flatnonzero(partner_pool)
+    joined = 0
+    max_size = MARRIAGE_MAX_SIZE.get(marriage_type, 2)
+    if marriage_type != "monogamy":
+        joined += _join_existing_unions(state, table, rng, eligible, marriage_type, max_size)
+
+    still_eligible = eligible & (state.union_id < 0)
+    still_pool = partner_pool & (state.union_id < 0)
+    eligible_idx = np.flatnonzero(still_eligible)
+    pool_idx = np.flatnonzero(still_pool)
     k = min(len(pool_idx), sample_cap)
-    if len(eligible_idx) == 0 or k == 0:
-        return 0
-    attempters = eligible_idx[rng.random(len(eligible_idx)) < marriage_chance]
-    if len(attempters) == 0:
-        return 0
+    paired = 0
+    if len(eligible_idx) > 0 and k > 0:
+        attempters = eligible_idx[rng.random(len(eligible_idx)) < marriage_chance]
+        if len(attempters) > 0:
+            candidates = pool_idx[_distinct_samples(rng, len(attempters), len(pool_idx), k)]          # [attempters, k]
+            herm = table.is_hermaphrodite[state.params_id]
+            female = state.is_female
+            compatible = ((herm[attempters][:, None] & herm[candidates]) | (female[attempters][:, None] != female[candidates]))
+            usable = (candidates != attempters[:, None]) & compatible
+            age_gap = np.where(usable, np.abs(state.age_days[candidates] - state.age_days[attempters][:, None]), np.inf)
+            ranked = np.argsort(age_gap, axis=1, kind="stable")        # closest first; ties keep sample order (first minimum)
+            ranked_candidates = np.take_along_axis(candidates, ranked, axis=1).tolist()
+            ranked_usable = np.isfinite(np.take_along_axis(age_gap, ranked, axis=1)).tolist()
 
-    candidates = pool_idx[_distinct_samples(rng, len(attempters), len(pool_idx), k)]          # [attempters, k]
-    herm = table.is_hermaphrodite[state.params_id]
-    female = state.is_female
-    compatible = ((herm[attempters][:, None] & herm[candidates]) | (female[attempters][:, None] != female[candidates]))
-    usable = (candidates != attempters[:, None]) & compatible
-    age_gap = np.where(usable, np.abs(state.age_days[candidates] - state.age_days[attempters][:, None]), np.inf)
-    ranked = np.argsort(age_gap, axis=1, kind="stable")        # closest first; ties keep sample order (first minimum)
-    ranked_candidates = np.take_along_axis(candidates, ranked, axis=1).tolist()
-    ranked_usable = np.isfinite(np.take_along_axis(age_gap, ranked, axis=1)).tolist()
+            taken = set()
+            first, second = [], []
+            for row, person in enumerate(attempters.tolist()):
+                if person in taken:                                    # already paired earlier in this phase
+                    continue
+                for candidate, ok in zip(ranked_candidates[row], ranked_usable[row]):
+                    if not ok:
+                        break
+                    if candidate not in taken:
+                        taken.add(person)
+                        taken.add(candidate)
+                        first.append(person)
+                        second.append(candidate)
+                        break
+            if first:
+                labels = state.new_union_ids(len(first))
+                state.union_id[first] = labels
+                state.union_id[second] = labels
+                paired = len(first)
 
-    taken = set()
-    first, second = [], []
-    for row, person in enumerate(attempters.tolist()):
-        if person in taken:                                    # already paired earlier in this phase
-            continue
-        for candidate, ok in zip(ranked_candidates[row], ranked_usable[row]):
-            if not ok:
-                break
-            if candidate not in taken:
-                taken.add(person)
-                taken.add(candidate)
-                first.append(person)
-                second.append(candidate)
-                break
-    if first:
-        labels = state.new_union_ids(len(first))
-        state.union_id[first] = labels
-        state.union_id[second] = labels
-    return len(first)
+    if marriage_type != "monogamy":
+        joined += _join_existing_unions(state, table, rng, eligible, marriage_type, max_size)
+    return paired + joined
 
 # 4. reproduction
 
@@ -281,14 +328,18 @@ def _find_fathers(state, table, rng, mothers, stats, partner):
     return father
 
 def reproduce(state, table, names, rng, current_day, age_years, genetic_adjuster, plague_count, pollution_count,
-              make_hybrid_row):
+              make_hybrid_row, hybridization_type="codominant"):
     """
     Reproduction phase over every female who is fertile, in the fertile ages, in a viable union and due to breed.
 
     Per eligible mother: contraception draw, age-based fertility (times the father's age-based fertility), conception
     draw, number of births (multiple births), then for each child: whether it survives infancy, its sex, whether it is
-    fertile and, for backwards-ageing species, its starting age. Hybrid children get blended parameters
-    (`make_hybrid_row`, which calls SimulationParameters.from_parents), dominant species cross as before.
+    fertile and, for backwards-ageing species, its starting age.
+
+    Hybridization (see README): dominant species always produce full members of that species. Otherwise
+    `codominant` (default) yields full males and females of either parent species, `midpoint` blends parameters
+    (`make_hybrid_row` / SimulationParameters.from_parents), and `lineal` gives daughters the mother's species and
+    sons the father's.
 
     Differences from the object-based loop (all only matter for polygynous harems, which only warfare creates, or
     for hermaphrodite pairs): a father's "max children" check uses his count from the start of the phase rather than a
@@ -346,15 +397,21 @@ def reproduce(state, table, names, rng, current_day, age_years, genetic_adjuster
 
     # ---- which parameters does the child use? (hybrid rules) ----
     is_hybrid = with_dad & (state.species_id[mom] != state.species_id[np.where(with_dad, dad, 0)])
-    child_row = np.where(with_dad & (rng.random(len(c)) >= 0.5), drow, mrow)          # random parent's rules by default
+    child_row = np.where(with_dad & (rng.random(len(c)) >= 0.5), drow, mrow)          # codominant: full either species
     mom_dominant, dad_dominant = table.is_dominant[mrow], table.is_dominant[drow]
     aborted = is_hybrid & mom_dominant & dad_dominant                                   # two dominant species: non-viable
     takes_mother = is_hybrid & mom_dominant & ~dad_dominant
     takes_father = is_hybrid & ~mom_dominant & dad_dominant
     child_row = np.where(takes_mother, mrow, np.where(takes_father, drow, child_row))
     is_hybrid = is_hybrid & ~takes_mother & ~takes_father
-    for j in np.flatnonzero(is_hybrid & ~aborted):                                     # blended parameters ("midpoint")
-        child_row[j] = make_hybrid_row(int(mrow[j]), int(drow[j]))
+    blendable = is_hybrid & ~aborted
+    if hybridization_type == "midpoint":
+        for j in np.flatnonzero(blendable):                                            # blended parameters
+            child_row[j] = make_hybrid_row(int(mrow[j]), int(drow[j]))
+    elif hybridization_type == "lineal":
+        pick_ratio = np.where(rng.random(len(c)) < 0.5, table.sex_ratio_at_birth[mrow], table.sex_ratio_at_birth[drow])
+        lineal_daughter = rng.random(len(c)) <= pick_ratio
+        child_row = np.where(blendable, np.where(lineal_daughter, mrow, drow), child_row)
     births_each = np.where(aborted, 0, births_each)
     breeding_done = c[~aborted]
     state.next_breeding_day[mothers[breeding_done]] = current_day + table.interbirth_interval_days[mp[breeding_done]]
@@ -375,6 +432,8 @@ def reproduce(state, table, names, rng, current_day, age_years, genetic_adjuster
 
     crow = child_row[born] # ---- the surviving children ----
     female_child = np.where(table.is_hermaphrodite[crow], True, rng.random(births) < table.sex_ratio_at_birth[crow])
+    if hybridization_type == "lineal":
+        female_child = np.where(is_hybrid[born], crow == mrow[born], female_child)
     sterile_chance = table.sterile_chance[crow] + pollution_sterility
     hybrid_boost = np.where(female_child, 0.2, 0.4)           # males of hybrid parentage are more often sterile
     sterile_chance = sterile_chance + np.where(with_dad[born] & is_hybrid[born], hybrid_boost, 0.0)

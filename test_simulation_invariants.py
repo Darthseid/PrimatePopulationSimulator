@@ -8,14 +8,12 @@ resurrected, unions and their members agree, everyone is aged exactly once, sex 
 happen, food allocation never exceeds what exists, and the disaster / warfare code still runs.
 
 The simulation is advanced one cycle at a time (see step()), so each invariant is checked after every cycle.
-Disasters are switched off by a hard-coded flag inside run_simulation(), so the disaster tests load a copy of the
-module in memory with that flag turned on; nothing on disk is changed.
+Disasters are off unless `disasters_enabled=True` is passed to PrimateSimulation (the disaster tests do that).
 """
 import contextlib
 import io
 import os
 import random
-import types
 import unittest
 
 os.environ.setdefault("MPLBACKEND", "Agg")   # never open a plot window
@@ -38,14 +36,14 @@ def setUpModule():
     os.chdir(HERE)   # the simulator reads demographics.json / locales.json / disasters.json from the working directory
 
 
-def make_sim(species, size=200, seed=1, module=sim_module, locale=None):
+def make_sim(species, size=200, seed=1, module=sim_module, locale=None, **settings):
     """species: comma-separated names. Returns a ready (not yet run) PrimateSimulation."""
     random.seed(seed)
     np.random.seed(seed)
     module.starting_population = size
     with contextlib.redirect_stdout(io.StringIO()):
         locale = locale or Locale.from_json("locales.json", "south_african_savanna")
-        return module.PrimateSimulation(species.split(","), locale)
+        return module.PrimateSimulation(species.split(","), locale, **settings)
 
 
 def step(sim):
@@ -169,7 +167,7 @@ class TestPopulationInvariants(InvariantMixin, unittest.TestCase):
         self.assertGreater(off_season_cycles, 0, "no off-season cycle occurred, so this test exercised nothing")
 
     def test_cross_species_reproduction_creates_hybrids(self):
-        sim = make_sim("modern_human,neanderthal", 300)
+        sim = make_sim("modern_human,neanderthal", 300, hybridization_type="midpoint")
         for _ in range(25):
             step(sim)
             self.check_population(sim, "hybrids")
@@ -235,27 +233,13 @@ class TestEndConditions(InvariantMixin, unittest.TestCase):
 
 
 class TestDisasters(InvariantMixin, unittest.TestCase):
-    @staticmethod
-    def module_with_disasters_on():
-        path = sim_module.__file__
-        with open(path, encoding="utf-8-sig") as f:
-            source = f.read()
-        assert "disasters_enabled = False" in source, "the hard-coded disaster switch moved; update this test"
-        module = types.ModuleType("primate_sim_disasters_on")
-        module.__file__ = path
-        exec(compile(source.replace("disasters_enabled = False", "disasters_enabled = True"), path, "exec"), module.__dict__)
-        module.display_population_pyramid = lambda *a, **k: None
-        module.plot_population_history = lambda *a, **k: None
-        return module
-
     def force(self, sim, names):
         for d in sim.disasters:
             d.is_possible = d.name in names
             d.trigger_chance = 1.0
 
     def test_warfare_kills_and_leaves_a_consistent_population(self):
-        module = self.module_with_disasters_on()
-        sim = make_sim("modern_human", 800, module=module)
+        sim = make_sim("modern_human", 800, disasters_enabled=True)
         self.force(sim, {"Warfare"})
         # resolve_warfare pairs off the post-puberty, not-elderly males and kills one of each pair
         combatants = ops.combatants_of(sim.state, sim.table)
@@ -269,8 +253,7 @@ class TestDisasters(InvariantMixin, unittest.TestCase):
             self.check_population(sim, "after warfare")
 
     def test_all_disasters_together_keep_the_population_consistent(self):
-        module = self.module_with_disasters_on()
-        sim = make_sim("modern_human", 800, module=module)
+        sim = make_sim("modern_human", 800, disasters_enabled=True)
         self.force(sim, {"Warfare", "Plague", "Pollution", "Famine"})
         out = step(sim)
         for name in ("Warfare", "Plague", "Pollution", "Famine"):

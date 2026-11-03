@@ -318,6 +318,19 @@ class TestCoupling(unittest.TestCase):
         self.assertTrue(stats.has_females.all() and stats.has_males.all())
         self.assertEqual(len(stats.labels), made)
 
+    def test_polygyny_lets_extra_females_join_a_male_union(self):
+        rng = np.random.default_rng(4)
+        people = [Primate("modern_human", False, 9000.0, True, self.params["modern_human"])]
+        people += [Primate("modern_human", True, 9000.0 + i, True, self.params["modern_human"]) for i in range(6)]
+        state = PopulationState.from_primates(people, self.table, self.names)
+        everyone = np.ones(len(people), dtype=bool)
+        ops.couple_singles(state, self.table, rng, everyone, everyone, marriage_chance=1.0, marriage_type="polygyny")
+        stats = ops.UnionStats(state, self.table)
+        self.assertEqual(len(stats.labels), 1)
+        self.assertEqual(int(stats.size[0]), 5)
+        self.assertEqual(int(np.count_nonzero(~state.is_female & (state.union_id >= 0))), 1)
+        self.assertEqual(int(np.count_nonzero(state.union_id < 0)), 2)
+
 
 class TestReproduction(unittest.TestCase):
     def setUp(self):
@@ -345,7 +358,7 @@ class TestReproduction(unittest.TestCase):
         def make_hybrid_row(mother_row, father_row):
             calls.append((mother_row, father_row))
             return mother_row
-        return ops.reproduce(state, self.table, self.names, np.random.default_rng(1), 100.0, age_years, 1.0, 0, 0, make_hybrid_row), calls
+        return ops.reproduce(state, self.table, self.names, np.random.default_rng(1), 100.0, age_years, 1.0, 0, 0, make_hybrid_row, "midpoint"), calls
 
     def test_every_viable_couple_has_a_child_and_both_parents_are_counted(self):
         state = self.couples(300)

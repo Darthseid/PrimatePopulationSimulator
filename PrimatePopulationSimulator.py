@@ -9,7 +9,7 @@ from PopulationObjects import Primate, Locale, convert_years_to_string, Disaster
 from PopulationObjects import SimulationParameters
 from population_state import NameTable, ParameterTable, PopulationState
 import population_ops as ops
-from population_ops import GOMPERTZ_A, GOMPERTZ_B, SEQUENT_TRANSITION_YEARS
+from population_ops import GOMPERTZ_A, GOMPERTZ_B, SEQUENT_TRANSITION_YEARS, MARRIAGE_MAX_SIZE
 from graphing import log_population_stats, display_population_pyramid, plot_population_history
 from typing import List
 
@@ -23,7 +23,12 @@ class PrimateSimulation:
     The controller layer: it owns the clock, the disasters, the counters and the reporting, and calls the vectorized
     operations in population_ops.py on the array-based PopulationState (population_state.py) for each phase of a cycle.
     """
-    def __init__(self, species_names: List[str], locale: Locale, scenario_name: str = None):
+    def __init__(self, species_names: List[str], locale: Locale, scenario_name: str = None,
+                 hybridization_type: str = "codominant", marriage_type: str = "monogamy",
+                 disasters_enabled: bool = False):
+        self.hybridization_type = hybridization_type
+        self.marriage_type = marriage_type
+        self.disasters_enabled = disasters_enabled
         self.species_params = {
             name: SimulationParameters.from_json("demographics.json", name)
             for name in species_names
@@ -118,7 +123,7 @@ class PrimateSimulation:
                            "has_sequent_sex_transition", "respawn_as_male", "is_aquatic", "kid_fodder")   # This is for hybrids.
 
     def make_hybrid_row(self, mother_row, father_row):
-        """Parameter-table row for a child of two parent rows, using the blended 'midpoint' hybrid rules."""
+        """Parameter-table row for a midpoint hybrid of two parent rows (SimulationParameters.from_parents)."""
         row = self._fixed_blends.get((mother_row, father_row))
         if row is not None:
             return row
@@ -135,11 +140,13 @@ class PrimateSimulation:
             sex = '♀️ ' if self.state.is_female[i] else '♂️ '
             name = self.names[int(self.state.species_id[i])]
             parts.append(f"{sex}{name}( Age: {self.state.age_days[i] / earth_year:.0f} Kids: {int(self.state.children[i])})")
-        return f"<Union (monogamy{len(members)}/{max(2, len(members))}) | Members: [{', '.join(parts)}]>\n"
+        cap = MARRIAGE_MAX_SIZE.get(self.marriage_type, 2)
+        return f"<Union ({self.marriage_type}{len(members)}/{max(cap, len(members))}) | Members: [{', '.join(parts)}]>\n"
 
     def run_simulation(self, num_years: float):
         start_time = time.time()  # Add this at the start of run_simulation
         print("--- Simulation Starting ---")
+        print(f"Settings: hybridization={self.hybridization_type}, marriage={self.marriage_type}, disasters={self.disasters_enabled}")
         log_population_stats(self.current_day, self.state, self.history, 0, 0, 0, 0)
 
         total_births = 0
@@ -163,7 +170,6 @@ class PrimateSimulation:
         cycle_days_passed = 0
         cycle_length_in_years = self.cycle_days / earth_year
         cycle_days = self.cycle_days
-        marriage_type = "monogamy"
 
         if self.cycle_days <= 0: # Safety check
             cycle_interval = 1
@@ -184,7 +190,7 @@ class PrimateSimulation:
             is_mating_season = (day_of_year < 30) or (day_of_year > (earth_year - 30)) or self.cycle_days >= 335 #December 2 to January 31.
 
             active_disasters = []
-            disasters_enabled = False
+            disasters_enabled = self.disasters_enabled
             for disaster in self.disasters:
                 if disaster.try_trigger(self.current_day, self.cycle_days, len(self.state)) and disasters_enabled:
                     print(f"*** DISASTER TRIGGERED: {disaster.name} ***")
@@ -249,12 +255,14 @@ class PrimateSimulation:
             if eligible.any():
                 partner_pool = eligible & ~(state.is_female &
                                             (ops.age_in_days_roundtrip(state.age_days) >= reference.menopause_age_days)) #This excludes post-menopausal females.
-                ops.couple_singles(state, self.table, self.rng, eligible, partner_pool, marriage_chance)
+                ops.couple_singles(state, self.table, self.rng, eligible, partner_pool, marriage_chance,
+                                   marriage_type=self.marriage_type)
          
             plague_count = sum(1 for disaster in active_disasters if disaster.name == "Plague") # ---- 3. Reproduction
             pollution_count = sum(1 for disaster in active_disasters if disaster.name == "Pollution")
             reproduction = ops.reproduce(state, self.table, self.names, self.rng, self.current_day, age_years,
-                                         genetic_adjuster, plague_count, pollution_count, self.make_hybrid_row)
+                                         genetic_adjuster, plague_count, pollution_count, self.make_hybrid_row,
+                                         self.hybridization_type)
             birth_counter += reproduction.births
             death_counter += reproduction.infant_deaths
             eligible_female_counter += reproduction.eligible_mothers
@@ -379,11 +387,24 @@ class PrimateSimulation:
         plot_population_history(self.history, self.current_day)
 
 if __name__ == "__main__":
+    # --- Settings menu: change these to configure a run ---
+    hybridization_type = "midpoint"  # "codominant" (default), "midpoint", or "lineal"
+    marriage_type = "polygyny"         # "monogamy" (default), "polygyny", "polyandry", or "polygamy"
+    disasters_enabled = True        # True to allow Warfare, Plague, Pollution, and Famine
+    num_years = 99.0
+    scenario_name = "survival_of_the_fittest"  # None for a random starting population
+    locale_name = "pampas"
+
     with open("demographics.json", "r") as f:
         demographics_data = json.load(f)
-    #starting_species = list(demographics_data.keys()) #This is for simulations, otherwise manually enter the starting species.
-    starting_species = [ "goblin"]
-    sim_locale = Locale.from_json("locales.json", "south_african_savanna")   
-    simulation = PrimateSimulation(starting_species, sim_locale)  # Load multiple species   
-    simulation.run_simulation(num_years=100.0) # Run the specific scenario
+    starting_species = list(demographics_data.keys()) #This is for simulations, otherwise manually enter the starting species.
+   # starting_species = [ "elf", "medieval_human"]
+    sim_locale = Locale.from_json("locales.json", locale_name)
+    simulation = PrimateSimulation(
+        starting_species, sim_locale, scenario_name,
+        hybridization_type=hybridization_type,
+        marriage_type=marriage_type,
+        disasters_enabled=disasters_enabled,
+    )
+    simulation.run_simulation(num_years=num_years)
 
