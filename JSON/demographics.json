@@ -102,6 +102,7 @@
     "fertility_rising_steepness": 1.2,
     "fertility_falling_steepness": 0.5,
     "is_hermaphrodite": false,
+    "is_humanoid": false,
     "contraception_abortion_use_rate": 0.0
   },
   "gorilla": {
@@ -128,6 +129,7 @@
     "fertility_rising_steepness": 1.2,
     "fertility_falling_steepness": 0.5,
     "is_hermaphrodite": false,
+    "is_humanoid": false,
     "contraception_abortion_use_rate": 0.0
   },
   "mandrill": {
@@ -154,6 +156,7 @@
     "fertility_rising_steepness": 1.2,
     "fertility_falling_steepness": 0.5,
     "is_hermaphrodite": false,
+    "is_humanoid": false,
     "contraception_abortion_use_rate": 0.0
   },
   "ring_tailed_lemur": {
@@ -180,6 +183,7 @@
     "fertility_rising_steepness": 1.2,
     "fertility_falling_steepness": 0.5,
     "is_hermaphrodite": false,
+    "is_humanoid": false,
     "contraception_abortion_use_rate": 0.0
   },
   "neanderthal": {
@@ -258,6 +262,7 @@
     "fertility_rising_steepness": 1.5,
     "fertility_falling_steepness": 0.1,
     "is_hermaphrodite": false,
+    "is_humanoid": false,
     "contraception_abortion_use_rate": 0.0
   },
   "elf": {
@@ -336,6 +341,7 @@
     "fertility_rising_steepness": 2.0,
     "fertility_falling_steepness": 1.0,
     "is_hermaphrodite": false,
+    "is_humanoid": false,
     "contraception_abortion_use_rate": 0.0
   },
   "giant": {
@@ -362,6 +368,7 @@
     "fertility_rising_steepness": 1.2,
     "fertility_falling_steepness": 0.5,
     "is_hermaphrodite": false,
+    "is_humanoid": false,
     "contraception_abortion_use_rate": 0.01
   },
   "peak": {
@@ -466,6 +473,7 @@
     "fertility_rising_steepness": 1.2,
     "fertility_falling_steepness": 0.5,
     "is_hermaphrodite": true,
+    "is_humanoid": false,
     "contraception_abortion_use_rate": 0.0
   },
   "simult": {
@@ -573,6 +581,7 @@
     "fertility_rising_steepness": 1.2,
     "fertility_falling_steepness": 0.5,
     "is_hermaphrodite": false,
+    "is_humanoid": false,
     "contraception_abortion_use_rate": 0.55
   },
   "satyr": {
@@ -626,6 +635,7 @@
     "fertility_rising_steepness": 1.2,
     "fertility_falling_steepness": 0.5,
     "is_hermaphrodite": false,
+    "is_xenophilic": true,
     "contraception_abortion_use_rate": 0.01
   },
   "coonfolk": {
@@ -652,6 +662,7 @@
     "fertility_rising_steepness": 1.2,
     "fertility_falling_steepness": 0.5,
     "is_hermaphrodite": false,
+    "is_xenophilic": true,
     "contraception_abortion_use_rate": 0.05
   },
   "double": {
@@ -814,7 +825,8 @@
     "fertility_rising_steepness": 1.2,
     "fertility_falling_steepness": 0.5,
     "is_hermaphrodite": false,
-    "contraception_abortion_use_rate": 0.04
+    "contraception_abortion_use_rate": 0.04,
+    "is_humanoid": false
   },
   "raionmimi": {
     "description": "Strong carnivore humanoids.",
@@ -840,7 +852,8 @@
     "fertility_rising_steepness": 1.2,
     "fertility_falling_steepness": 0.5,
     "is_hermaphrodite": false,
-    "contraception_abortion_use_rate": 0.08
+    "contraception_abortion_use_rate": 0.08,
+    "is_humanoid": false
   },
   "butamimi": {
     "description": "Their dead piglets becomes food for other species to eat.",
@@ -896,7 +909,8 @@
     "fertility_falling_steepness": 0.4,
     "is_hermaphrodite": false,
     "contraception_abortion_use_rate": 0.0,
-    "seasonal_mater": true
+    "seasonal_mater": true,
+    "is_humanoid": false
   },
   "homo_antecessor": {
     "description": "Ancient Homos that can eat grass.",
@@ -949,7 +963,8 @@
     "fertility_falling_steepness": 0.5,
     "is_hermaphrodite": false,
     "contraception_abortion_use_rate": 0.01,
-    "is_aquatic": true
+    "is_aquatic": true,
+    "is_humanoid": false
   },
   "darkspawn": {
     "description": "A brutal all-male species.",
@@ -1003,6 +1018,7 @@
     "fertility_falling_steepness": 0.5,
     "is_hermaphrodite": false,
     "contraception_abortion_use_rate": 0.01,
+    "is_xenophilic": true,
     "is_dominant": true
   },
   "widow": {

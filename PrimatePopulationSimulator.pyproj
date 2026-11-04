@@ -4,13 +4,14 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>25de273e-8421-4160-9196-a80cdb7a5ccd</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>PrimatePopulationSimulator.py</StartupFile>
+    <StartupFile>Python src\PrimatePopulationSimulator.py</StartupFile>
     <SearchPath>
     </SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
     <OutputPath>.</OutputPath>
     <Name>PrimatePopulationSimulator</Name>
     <RootNamespace>PrimatePopulationSimulator</RootNamespace>
+    <IsWindowsApplication>False</IsWindowsApplication>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
     <DebugSymbols>true</DebugSymbols>

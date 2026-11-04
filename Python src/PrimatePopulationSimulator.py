@@ -9,7 +9,7 @@ from PopulationObjects import Primate, Locale, convert_years_to_string, Disaster
 from PopulationObjects import SimulationParameters
 from population_state import NameTable, ParameterTable, PopulationState
 import population_ops as ops
-from population_ops import GOMPERTZ_A, GOMPERTZ_B, SEQUENT_TRANSITION_YEARS, MARRIAGE_MAX_SIZE
+from population_ops import MARRIAGE_MAX_SIZE
 from graphing import log_population_stats, display_population_pyramid, plot_population_history
 from typing import List
 
@@ -30,7 +30,7 @@ class PrimateSimulation:
         self.marriage_type = marriage_type
         self.disasters_enabled = disasters_enabled
         self.species_params = {
-            name: SimulationParameters.from_json("demographics.json", name)
+            name: SimulationParameters.from_json("JSON\demographics.json", name)
             for name in species_names
         }
         self.locale = locale
@@ -45,7 +45,7 @@ class PrimateSimulation:
         self.state = PopulationState(context=(self.table, self.names))
         self._fixed_blends = {}   # (mother row, father row) -> hybrid row, see make_hybrid_row
 
-        self.disasters = Disaster.from_json("disasters.json")
+        self.disasters = Disaster.from_json("JSON\disasters.json")
 
         self.cycle_days = min(params.interbirth_interval_days for params in self.species_params.values())       
         print(f"Locale: {self.locale.name} ({self.locale.biome_type})")
@@ -67,7 +67,7 @@ class PrimateSimulation:
         if scenario_name:
             print(f"Loading population from scenario: {scenario_name}")
             try:
-                with open("scenarios.json", 'r') as f:
+                with open("JSON\scenarios.json", 'r') as f:
                     scenarios = json.load(f)
                 
                 if scenario_name not in scenarios:
@@ -389,17 +389,17 @@ class PrimateSimulation:
 
 if __name__ == "__main__":  # --- Settings menu: change these to configure a run ---   
     hybridization_type = "codominant"  # "codominant" (default), "midpoint", or "lineal"
-    marriage_type = "monogamy"         # "monogamy" (default), "polygyny", "polyandry", or "polygamy"
-    disasters_enabled = True        # True to allow Warfare, Plague, Pollution, and Famine
+    marriage_type = "polygyny"         # "monogamy" (default), "polygyny", "polyandry", or "polygamy"
+    disasters_enabled = False        # True to allow Warfare, Plague, Pollution, and Famine
     num_years = 99.0
     scenario_name = None  # None for a random starting population
     locale_name = "pampas"
 
-    with open("demographics.json", "r") as f:
+    with open("JSON\demographics.json", "r") as f:
         demographics_data = json.load(f)
     #starting_species = list(demographics_data.keys()) #This is for simulations, otherwise manually enter the starting species.
-    starting_species = [ "satyr", "modern_human"]
-    sim_locale = Locale.from_json("locales.json", locale_name)
+    starting_species = [ "coonfolk", "modern_human"]
+    sim_locale = Locale.from_json("JSON\locales.json", locale_name)
     simulation = PrimateSimulation(
         starting_species, sim_locale, scenario_name,
         hybridization_type=hybridization_type,
