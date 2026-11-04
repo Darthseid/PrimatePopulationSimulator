@@ -1,11 +1,15 @@
-﻿import numpy as np
+﻿import math
 import random
 import json
 from typing import Optional, Set, List
 
 earth_year = 365.2422  # Constants
+HUMAN_STD_LIFESPAN = 81.4  # years; baseline the Gompertz old-age mortality curve is scaled against
 
 class Primate:
+    __slots__ = ("species_name", "is_female", "params", "age_days", "is_fertile",
+                 "number_of_healthy_children", "next_breeding_day", "union")
+
     def __init__(self, species_name, is_female: bool, age_days: int, is_initially_fertile: bool, params: 'SimulationParameters'):
         self.species_name = species_name
         self.is_female: bool = is_female
@@ -24,15 +28,16 @@ class Primate:
         """
         Calculates the individual daily caloric/resource need for this primate.
         """
-        need = self.params.calories_needed_per_primate
+        params = self.params
+        need = params.calories_needed_per_primate
 
         if self.is_female:
             need *= 0.9
-            
-        biological_age_days = self.age_years * earth_year
-        if biological_age_days < self.params.puberty_age_days:
+      
+        biological_age_days = (self.age_days / earth_year) * earth_year
+        if biological_age_days < params.puberty_age_days:  # Same float round-trip as age_years * earth_year, without the property call.
             need *= 0.5
-        if biological_age_days > self.params.lifespan_days:
+        if biological_age_days > params.lifespan_days:
             need *= 0.75
         return need
     
@@ -43,7 +48,6 @@ class Primate:
         """
         return self.union is not None
     
-
     def __repr__(self) -> str:
         species = self.species_name
         gender = "Female" if self.is_female else "Male"
@@ -84,6 +88,11 @@ class Locale:
 class SimulationParameters:
     """
     Holds all simulation parameters for a given species.
+
+    Treat instances as read-only once constructed: nothing in the repo mutates them, and
+    _cache_derived() precomputes values that hot loops would otherwise recompute for every
+    individual every cycle. If you ever mutate a field those values depend on (puberty/menopause/
+    lifespan/fertility steepness/diet_type), call _cache_derived() again.
     """
     @classmethod
     def from_json(cls, json_path: str, profile_name: str):
@@ -118,7 +127,7 @@ class SimulationParameters:
         
         self.is_hermaphrodite = params.get("is_hermaphrodite", False) # Use .get() for optional params
         self.is_sequential_species = params.get("is_sequential_species", False)
-        self.ages_backward = params.get("ages_backward", False) # --- ADDED ---
+        self.ages_backward = params.get("ages_backward", False) 
         self.is_dominant = params.get("is_dominant", False) #Is dominant means that this species can only propagate itself.
         self.seasonal_mater = params.get("seasonal_mater", False) #This means that the species has mating cycles.
         self.lopsided_sex_lifespan = params.get("lopsided_sex_lifespan", False)
@@ -126,6 +135,8 @@ class SimulationParameters:
         self.respawn_as_male = params.get("respawn_as_male", False)
         self.is_aquatic = params.get("is_aquatic", False)
         self.kid_fodder = params.get("kid_fodder", False)
+        self.is_humanoid = params.get("is_humanoid", True)  # Non-humanoids breed only with their own species.
+        self.is_xenophilic = params.get("is_xenophilic", False)  # Prefer a partner of another species on a coin flip.
         
         self.infant_mortality_rate = params["infant_mortality_rate"]
         self.maternal_mortality_rate = params["maternal_mortality_rate"]
@@ -159,6 +170,20 @@ class SimulationParameters:
         else:
             self.per_cycle_adult_mortality_rate = 0
 
+        self._cache_derived()
+
+    def _cache_derived(self):
+        """Precompute values that are pure functions of this object's (never-mutated) fields."""
+        self.lifespan_years = self.lifespan_days / earth_year if self.lifespan_days > 0 else 0.0         # Gompertz old-age mortality (runs for every individual every cycle).
+        self.human_aging_factor = HUMAN_STD_LIFESPAN / self.lifespan_years if self.lifespan_years > 0 else 0.0
+       
+        self.flat_fertility = (self.fertility_rising_steepness < 0.01 and self.fertility_falling_steepness < 0.01)
+        fertile_years = self.fertile_days / earth_year  # Age-based fertility curve (runs for every eligible mother every cycle).
+        peak_age = self.puberty_age_days / earth_year + fertile_years * 0.127
+        self.fertility_rising_midpoint = (self.puberty_age_days / earth_year + peak_age) / 1.6
+        self.fertility_declining_midpoint = (peak_age + self.menopause_age_days / earth_year) / 1.95     
+        self.diet_key = self.diet_type.lower() # Feeding loop compares this string for every individual every cycle.
+
     @classmethod
     def from_parents(cls, p1: 'SimulationParameters', p2: 'SimulationParameters'):
         """
@@ -176,15 +201,16 @@ class SimulationParameters:
                 
         new_params.is_hermaphrodite = False
         new_params.is_sequential_species = False
-        new_params.is_dominant = random.choice([p1.is_dominant, p2.is_dominant]) # This normally should not be inherited, but it throws an error otherwise.
+        new_params.is_dominant = False #If a parent is dominant, they wouldn't be a midpoint hybrid, so this is always False for hybrids.
         new_params.seasonal_mater = random.choice([p1.seasonal_mater, p2.seasonal_mater])
         new_params.ages_backward = random.choice([p1.ages_backward, p2.ages_backward]) # 2. Booleans (Midpoint Rules)
         new_params.lopsided_sex_lifespan = random.choice([p1.lopsided_sex_lifespan, p2.lopsided_sex_lifespan])
-        new_params.has_sequent_sex_transition = random.choice([p1.has_sequent_sex_transition, p2.has_sequent_sex_transition])
-        new_params.respawn_as_male = random.choice([p1.respawn_as_male, p2.respawn_as_male])
-        new_params.is_aquatic = random.choice([p1.is_aquatic, p2.is_aquatic])
+        new_params.has_sequent_sex_transition = False
+        new_params.respawn_as_male = False
         new_params.is_aquatic = random.choice([p1.is_aquatic, p2.is_aquatic])
         new_params.kid_fodder = random.choice([p1.kid_fodder, p2.kid_fodder])
+        new_params.is_humanoid = True # Non-humanoids breed only with their own species, so hybrids are always humanoid.
+        new_params.is_xenophilic = random.choice([p1.is_xenophilic, p2.is_xenophilic])
               
         new_params.puberty_age_days = (p1.puberty_age_days + p2.puberty_age_days) / 2
         new_params.menopause_age_days = (p1.menopause_age_days + p2.menopause_age_days) / 2
@@ -213,7 +239,8 @@ class SimulationParameters:
         new_params.fertile_days = new_params.menopause_age_days - new_params.puberty_age_days  # 4. Recalculate Derived Parameters    
             
         new_params.effective_per_cycle_fertility_rate = min(new_params.per_cycle_fertility_rate * (1 - new_params.miscarriage_stillborn_rate), 0.99999 )
-                                                                          
+
+        new_params._cache_derived()
         return new_params
 
 class Union:
@@ -224,7 +251,7 @@ class Union:
         self.marriage_type = marriage_type
         self.max_size = max_size
         self.members: List[Primate] = []
-        self.dissolved = False   # <-- CRUCIAL FIX
+        self.dissolved = False  
 
     def add_member(self, primate: Primate):
         if len(self.members) < self.max_size:
@@ -253,11 +280,17 @@ class Union:
 
     def has_females(self) -> bool:
         """Checks if the union has at least one female."""
-        return any(m.is_female or m.params.is_hermaphrodite for m in self.members)
+        for m in self.members:
+            if m.is_female or m.params.is_hermaphrodite:
+                return True
+        return False
 
     def has_males(self) -> bool:
         """Checks if the union has at least one male."""
-        return any(not m.is_female or m.params.is_hermaphrodite for m in self.members)
+        for m in self.members:
+            if not m.is_female or m.params.is_hermaphrodite:
+                return True
+        return False
 
     def is_viable_for_breeding(self) -> bool:
         """Check if union can produce children"""
@@ -266,9 +299,8 @@ class Union:
         if len(self.members) < 2:
             return False            
         return self.has_females() and self.has_males()
-
-    # In Union class
-    def __repr__(self):
+    
+    def __repr__(self): # In Union class
         member_descriptions = ", ".join(
         [f"{'♀️ ' if m.is_female else '♂️ '}{m.species_name}( Age: {m.age_years:.0f} Kids: {m.number_of_healthy_children})" for m in self.members]
         )
@@ -296,6 +328,16 @@ def convert_years_to_string(years_float: float) -> str:
     return ", ".join(parts) if parts else "0 days"
 
 
+def _inverse_logistic(x: float) -> float:
+    """
+    1 / (1 + e**x) for a scalar. np.exp overflows to inf (result 0.0) whereas math.exp raises
+    OverflowError, so that case is mapped back to 0.0 to keep the old behaviour.
+    """
+    try:
+        return 1.0 / (1.0 + math.exp(x))
+    except OverflowError:
+        return 0.0
+
 def calculate_age_based_fertility(
     current_age: float, 
     max_fertility: float, 
@@ -316,20 +358,18 @@ def calculate_age_based_fertility(
     :param falling_midpoint_age: The age (in years) at which fertility falls to 50% of its peak during the decline (t2).
     :return: The calculated fertility rate for the current age.
     """
-    # Logistic function for the rising part of the curve (puberty to peak)
-    growth_logistic = 1.0 / (1.0 + np.exp(-rising_steepness * (current_age - rising_midpoint_age)))
+  
+    growth_logistic = _inverse_logistic(-rising_steepness * (current_age - rising_midpoint_age))   # Logistic function for the rising part of the curve (puberty to peak)
+    decline_logistic = 1.0 - _inverse_logistic(-falling_steepness * (current_age - falling_midpoint_age)) # Logistic function for the declining part of the curve (peak to menopause)
     
-    # Logistic function for the declining part of the curve (peak to menopause)
-    # This is (1 - logistic) to create an inverse curve
-    decline_logistic = 1.0 - (1.0 / (1.0 + np.exp(-falling_steepness * (current_age - falling_midpoint_age))))
-    
-    # The final fertility is the product of the peak rate and both logistic curves
-    return max_fertility * growth_logistic * decline_logistic
+    return max_fertility * growth_logistic * decline_logistic # The final fertility is the product of the peak rate and both logistic curves
 
 def find_union_for_primate(primate: Primate, eligible_pool: Set[Primate], marriage_type, active_unions: List[Union]):
         """
         This is the new "Coupling" function.
         It finds a partner or existing union for the given primate.
+        
+        For xenophilic species, there's a 50% chance to prioritize partners from other species.
         """
         if marriage_type == "asexual":
             if primate.is_hermaphrodite:
@@ -338,18 +378,27 @@ def find_union_for_primate(primate: Primate, eligible_pool: Set[Primate], marria
             return # Asexual non-hermaphrodites can't couple
 
         potential_partners = []
+        primate_is_herm = primate.params.is_hermaphrodite
+        primate_is_female = primate.is_female
         for partner in eligible_pool:
             if partner is primate or partner.union is not None:
                 continue          
-            if (primate.params.is_hermaphrodite and partner.params.is_hermaphrodite) or \
-               (primate.is_female != partner.is_female):
+            if (primate_is_herm and partner.params.is_hermaphrodite) or \
+               (primate_is_female != partner.is_female):
                 potential_partners.append(partner) # Find opposite sex (or any other hermaphrodite)
 
         if not potential_partners:
             return # No partners available
         
-        potential_partners.sort(key=lambda p: abs(p.age_days - primate.age_days))
-        best_partner = potential_partners[0] # Sort partners by closest age
+        # Apply xenophilic preference if applicable
+        if primate.params.is_xenophilic and random.random() < 0.5:
+            # Filter for partners of different species
+            other_species_partners = [p for p in potential_partners if p.species_name != primate.species_name]
+            if other_species_partners:
+                potential_partners = other_species_partners
+        
+        primate_age_days = primate.age_days
+        best_partner = min(potential_partners, key=lambda p: abs(p.age_days - primate_age_days)) # Closest age
 
         if marriage_type == "monogamy":
             new_union = Union(marriage_type="monogamy", max_size=2)
@@ -359,7 +408,6 @@ def find_union_for_primate(primate: Primate, eligible_pool: Set[Primate], marria
 
         if marriage_type == "polygyny":
             if not primate.is_female: # Male is seeking
-                # Males form new unions
                 new_union = Union(marriage_type="polygyny", max_size=5)
                 new_union.add_member(primate)
                 new_union.add_member(best_partner) # Add one female

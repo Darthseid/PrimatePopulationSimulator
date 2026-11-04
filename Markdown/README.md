@@ -17,6 +17,23 @@ At the end of a run, the simulator provides a detailed statistical summary, a te
   * **Starting Scenarios:** Can be booted from a "random" population or from a specific, pre-defined scenario (e.g., an "aging\_village" or a "bounty\_mutiny" founder group).
   * **Visualization:** Automatically generates a text-based population pyramid and a graphical plot of population over time.
 
+## Marriage Types
+
+Marriage type is set in the `if __name__ == "__main__":` settings block of `PrimatePopulationSimulator.py`. It controls how breeding unions form.
+
+  * **Monogamy** (default): 1 male + 1 female. Warfare can still produce multiple wives even when the marriage type is monogamy (the victor takes the loser's female partners).
+  * **Polygyny:** 1 male + many females.
+  * **Polyandry:** 1 female + many males.
+  * **Polygamy:** many-male + many-female breeding unions.
+
+## Hybridization Types
+
+Hybridization type is also set in that same settings block. It controls children of mixed-species unions. Species marked `is_dominant` in `demographics.json` always produce kids that are fully their own species. Two different dominant species cannot produce a viable child.
+
+  * **Codominant Hybridization** (default): a hybrid union can produce full males and full females of both parent species.
+  * **Lineal Hybridization:** all sons have the father's species and all daughters have the mother's species.
+  * **Midpoint Hybridization:** hybrid kids are the midpoint of their mother and father's characteristics. Numeric traits are averaged; boolean traits are a coin flip.
+
 ## How to Run the Simulation
 
 ### 1\. Prerequisites
@@ -48,32 +65,9 @@ All configuration is done by editing plain text files or the main script's `__ma
     This file holds specific starting populations. You can add new scenarios here. Each agent is defined with a starting `age_days`, `is_female` status, and `is_initially_fertile` status.
 
   * `PrimatePopulationSimulator.py` (at the very bottom)
-    This is where you **choose which simulation to run**. Go to the `if __name__ == "__main__":` block at the end of the file to edit the simulation parameters:
+    This is the **settings menu**. Edit the variables in the `if __name__ == "__main__":` block:
 
-      * **To change the species:**
-        Modify the second argument in this line to match a profile name from `demographics.json`:
-
-        ```python
-        sim_params = SimulationParameters.from_json("demographics.json", "modern_human")
-        ```
-
-      * **To change the run duration:**
-        Modify the `num_years` value in this line:
-
-        ```python
-        simulation.run_simulation(num_years=10.0)
-        ```
-
-      * **To start with a random population:**
-        Make sure this line is active:
-
-        ```python
-        simulation = PrimateSimulation(params=sim_params) # For a random start
-        ```
-
-      * **To start from a scenario:**
-        Comment out the line above and uncomment this one, changing `"bounty_mutiny"` to the name of your desired scenario from `Scenarios.json`:
-
-        ```python
-        #simulation = PrimateSimulation(params=sim_params, scenario_name="bounty_mutiny")
-        ```
+      * `hybridization_type`: `"codominant"`, `"midpoint"`, or `"lineal"`
+      * `marriage_type`: `"monogamy"`, `"polygyny"`, `"polyandry"`, or `"polygamy"`
+      * `disasters_enabled`: `True` or `False`
+      * `num_years`, `scenario_name` (`None` for a random start), `locale_name`, and `starting_species`

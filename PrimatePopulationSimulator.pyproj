@@ -25,7 +25,12 @@
     <Compile Include="PrimatePopulationSimulator.py" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include="CHANGELOG.md" />
+    <Content Include="HUMANOID_FEATURE_COMPLETE.md" />
+    <Content Include="HUMANOID_IMPLEMENTATION.md" />
+    <Content Include="IMPLEMENTATION_SUMMARY.md" />
     <Content Include="P" />
+    <Content Include="QUICK_REFERENCE.md" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
   <!-- Uncomment the CoreCompile target to enable the Build command in

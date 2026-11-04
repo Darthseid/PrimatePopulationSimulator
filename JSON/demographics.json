@@ -599,6 +599,7 @@
     "fertility_rising_steepness": 1.2,
     "fertility_falling_steepness": 0.5,
     "is_hermaphrodite": false,
+    "is_xenophilic": true,
     "contraception_abortion_use_rate": 0.56
   },
   "usagimimi": {
@@ -699,6 +700,7 @@
     "adult_mortality_rate": 0.005,
     "calories_needed_per_primate": 151,
     "diet_type": "autotroph",
+    "is_humanoid": false,
     "coupling_rate": 1.0,
     "initial_genetic_diversity": 1.0,
     "miscarriage_stillborn_rate": 0.8,
