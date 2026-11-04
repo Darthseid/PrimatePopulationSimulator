@@ -201,16 +201,15 @@ class SimulationParameters:
                 
         new_params.is_hermaphrodite = False
         new_params.is_sequential_species = False
-        new_params.is_dominant = random.choice([p1.is_dominant, p2.is_dominant]) # This normally should not be inherited, but it throws an error otherwise.
+        new_params.is_dominant = False #If a parent is dominant, they wouldn't be a midpoint hybrid, so this is always False for hybrids.
         new_params.seasonal_mater = random.choice([p1.seasonal_mater, p2.seasonal_mater])
         new_params.ages_backward = random.choice([p1.ages_backward, p2.ages_backward]) # 2. Booleans (Midpoint Rules)
         new_params.lopsided_sex_lifespan = random.choice([p1.lopsided_sex_lifespan, p2.lopsided_sex_lifespan])
-        new_params.has_sequent_sex_transition = random.choice([p1.has_sequent_sex_transition, p2.has_sequent_sex_transition])
-        new_params.respawn_as_male = random.choice([p1.respawn_as_male, p2.respawn_as_male])
-        new_params.is_aquatic = random.choice([p1.is_aquatic, p2.is_aquatic])
+        new_params.has_sequent_sex_transition = False
+        new_params.respawn_as_male = False
         new_params.is_aquatic = random.choice([p1.is_aquatic, p2.is_aquatic])
         new_params.kid_fodder = random.choice([p1.kid_fodder, p2.kid_fodder])
-        new_params.is_humanoid = random.choice([p1.is_humanoid, p2.is_humanoid])
+        new_params.is_humanoid = True # Non-humanoids breed only with their own species, so hybrids are always humanoid.
         new_params.is_xenophilic = random.choice([p1.is_xenophilic, p2.is_xenophilic])
               
         new_params.puberty_age_days = (p1.puberty_age_days + p2.puberty_age_days) / 2
